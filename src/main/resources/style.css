@@ -1,0 +1,110 @@
+@font-face {
+    font-family: 'DarkFontRegular';
+    src: url('fonts/dark_font_Regular.tff');
+}
+@font-face {
+    font-family: 'DarkFontDemiBold';
+    src: url('fonts/dark_font_DemiBold.tff');
+}
+
+.root-pane {
+    -fx-background-color: black;
+    background-color: black;
+}
+
+.label, .button, .text-field {
+    -fx-font-family: 'DarkFontRegular';
+    font-family: 'DarkFontRegular';
+    -fx-text-fill: #EEDDCC;
+}
+
+.level-label {
+    -fx-font-family: 'DarkFontDemiBold';
+    -fx-font-size: 28px;
+    font-family: 'DarkFontDemiBold';
+    font-size: 28px;
+    -fx-text-fill: #FFCC00;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 10, 0.0, 0, 0);
+}
+
+.difficulty-label {
+    -fx-font-family: 'DarkFontRegular';
+    -fx-font-size: 18px;
+    font-family: 'DarkFontRegular';
+    font-size: 18px;
+    -fx-text-fill: #999999;
+}
+
+.sudoku-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: #333333;
+    -fx-border-width: 1px;
+    -fx-alignment: center;      
+    -fx-padding: 0;
+    background-color: transparent;
+    padding: 0;
+    border-color: #333333;
+    border-width: 1px;
+}
+
+.sudoku-grid-container {
+    -fx-border-color: #555555;
+    -fx-border-width: 3px;
+    -fx-background-color: rgba(0, 0, 0, 0.5);
+    border-color: #555555;
+    border-width: 3px;
+    background-color: rgba(0, 0, 0, 0.5); 
+}
+
+.heavy-border-right {
+    -fx-border-right-width: 3px;
+    -fx-border-right-color: #555555;
+    border-right-width: 3px;
+    border-right-color: #555555;
+}
+
+.heavy-border-bottom {
+    -fx-border-bottom-width: 3px;
+    -fx-border-bottom-color: #555555;
+    border-bottom-width: 3px;
+    border-bottom-color: #555555;
+}
+
+.selected-cell {
+    -fx-background-color: rgba(255, 255, 255, 0.2);
+    -fx-border-color: #FFCC00;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #FFCC00;
+}
+
+.initial-number {
+    -fx-font-family: 'DarkFontDemiBold';
+    -fx-font-size: 20px;
+    -fx-text-fill: #EEDDCC;
+    font-family: 'DarkFontDemiBold';
+    font-size: 20px;
+}
+
+.user-number-correct {
+    -fx-font-family: 'DarkFontRegular';
+    -fx-font-size: 20px;
+    -fx-text-fill: #77EE77;
+    font-family: 'DarkFontRegular';
+    font-size: 20px;
+}
+
+.user-number-error {
+    -fx-font-family: 'DarkFontRegular';
+    -fx-font-size: 20px;
+    -fx-text-fill: #FF5555;
+    font-family: 'DarkFontRegular';
+    font-size: 20px;
+}
+
+.note-label {
+    -fx-font-family: 'DarkFontRegular';
+    -fx-font-size: 8px;
+    -fx-text-fill: #AAAAAA;
+    font-family: 'DarkFontRegular';
+    font-size: 8px;
+}

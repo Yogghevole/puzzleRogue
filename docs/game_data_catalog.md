@@ -7,27 +7,27 @@ These buffs are unlocked by spending **Points** in the "The Ancestor's Legacy" m
 | ID | Name | Max Level | Level | Cost (Total Points) | Effect on Run |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **EXTRA_LIVES** | Additional Lives 
-| | | 1 | 50 | Starts the Run with **+1** Life. |
-| | | 2 | 120 | Starts the Run with **+2** Lives. |
-| | | 3 | 250 | Starts the Run with **+3** Lives. |
+| | | 1 | 500 | Starts the Run with **+1** Life. |
+| | | 2 | 1200 | Starts the Run with **+2** Lives. |
+| | | 3 | 2000 | Starts the Run with **+3** Lives. |
 
 | **FIRST_ERROR_PROTECT** | First Error Protection 
-| | | 1 | 100 | Gains **1 shield** that cancels the first error per Level. |
+| | | 1 | 2000 | Gains **1 shield** that cancels the first error per Level. |
 
 | **STARTING_HINTS** | Initial Hints 
-| | | 1 | 75 | Generates the Sudoku with **+1** pre-filled cell. |
-| | | 2 | 160 | Generates the Sudoku with **+2** pre-filled cells. |
-| | | 3 | 300 | Generates the Sudoku with **+3** pre-filled cells. |
+| | | 1 | 1000 | Generates the Sudoku with **+1** pre-filled cell. |
+| | | 2 | 1600 | Generates the Sudoku with **+2** pre-filled cells. |
+| | | 3 | 3000 | Generates the Sudoku with **+3** pre-filled cells. |
 
 | **POINT_BONUS** | Point Gain Multiplier 
-| | | 1 | 120 | Increases final score gain by **+10%**. |
-| | | 2 | 280 | Increases final score gain by **+20%**. |
-| | | 3 | 500 | Increases final score gain by **+33%**. |
+| | | 1 | 600 | Increases final score gain by **+10%**. |
+| | | 2 | 1300 | Increases final score gain by **+20%**. |
+| | | 3 | 2100 | Increases final score gain by **+33%**. |
 
 | **INVENTORY_CAPACITY**| Inventory Capacity 
-| | | 1 | 60 | Increases Inventory capacity by **+1** slot (Total: 3). |
-| | | 2 | 140 | Increases Inventory capacity by **+2** slots (Total: 4). |
-| | | 3 | 320 | Increases Inventory capacity by **+3** slots (Total: 5). |
+| | | 1 | 600 | Increases Inventory capacity by **+1** slot. |
+| | | 2 | 1400 | Increases Inventory capacity by **+2** slots. |
+| | | 3 | 3200 | Increases Inventory capacity by **+3** slots. |
 
 ---
 

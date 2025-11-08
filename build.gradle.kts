@@ -11,23 +11,20 @@ repositories {
 }
 
 javafx {
-    modules("javafx.base", "javafx.controls", "javafx.graphics")
+    modules("javafx.base", "javafx.controls", "javafx.graphics", "javafx.fxml")
     version  = "25"
 }
 dependencies {
-    // Suppressions for SpotBugs
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.9.8")
     val jUnitVersion = "6.0.1"
-    // JUnit API and testing engine
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jUnitVersion")
 }
 
 tasks.withType<Test> {
-    // Enables JUnit 5 Jupiter module
     useJUnitPlatform()
 }
 
 application {
-    mainClass.set("it.unibo.samplejavafx.base.App")
+    mainClass.set("app.Main")
 }
