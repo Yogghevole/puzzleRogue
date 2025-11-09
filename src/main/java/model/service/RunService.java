@@ -8,7 +8,8 @@ import model.domain.SudokuGrid;
 import model.domain.User;
 import model.engine.SudokuEngine;
 import java.util.Collections;
-import java.util.Optional;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Gestisce la logica di business di una singola Run.
@@ -59,8 +60,9 @@ public class RunService {
         currentRun.setCurrentLevelState(newLevelState);
         
         currentEngine = new SudokuEngine(newPuzzle);
-        
-        // TODO Tommy (salvataggio run) 
+
+        // Save run after starting new level
+        saveCurrentRun();
         
         return true;
     }
@@ -79,8 +81,10 @@ public class RunService {
         if (isCorrect && currentEngine.checkWin()) {
              endLevel(true);
         }
-        
-        // TODO Tommy (salvataggio stato attuale) 
+
+        // Save run after each move
+        saveCurrentRun();
+
         return isCorrect;
     }
 
@@ -110,52 +114,132 @@ public class RunService {
             return false;
         }
 
+        boolean success = false;
+
         switch (itemId) {
             case "HINT_ITEM":
-                return currentEngine.revealHint().isPresent();
+                success = currentEngine.revealHint().isPresent();
+                break;
 
-            case "MISSING_HEART_ITEM":
+            case "LIFE_BOOST_ITEM":
                 currentRun.addLife();
-                return true;
+                success = true;
+                break;
 
             case "SACRIFICE_ITEM":
-                currentRun.loseLife();
-                System.out.println("Sacrificio effettuato. (Logica Hint temporanea da implementare)");
-                return currentRun.getLivesRemaining() > 0;
-                
+                if (currentRun.getLivesRemaining() > 1) {
+                    currentRun.loseLife();
+                    success = currentEngine.revealHint().isPresent() && 
+                             currentEngine.revealHint().isPresent(); // Two hints
+                }
+                break;
+                    
             case "SCORE_ITEM":
-                System.out.println("Punti aggiunti! (Logica da implementare nel Servizio Punteggio)");
-                return true;
-
-            default:
-                addItemToInventory(itemId, 1);
-                return false;
+                int currentLevel = currentRun.getCurrentLevelState().getCurrentLevel();
+                currentRun.addToScore(currentLevel * 10);
+                success = true;
+                break;
         }
-        // TODO Tommy (salvataggio stato attuale)
+
+        if (!success) {
+            // Restore item if action failed
+            addItemToInventory(itemId, 1);
+        }
+
+        // Save run after using item
+        saveCurrentRun();
+        return success;
     }
     
     // --- 4. Fine Livello/Run ---
 
     public void endLevel(boolean win) {
         if (win) {
-            int nextLevel = currentRun.getCurrentLevelState().getCurrentLevel() + 1;
-            // TODO Tommy (calcolo punteggio)
-            System.out.println("Livello " + (nextLevel - 1) + " Completato!");
+            RunLevelState currentState = currentRun.getCurrentLevelState();
+            int currentLevel = currentState.getCurrentLevel();
+            
+            // Calculate level score
+            int levelScore = currentLevel * 10;
+            
+            // Add zero error bonus if applicable
+            if (currentState.getErrorsInLevel() == 0) {
+                levelScore += 30;
+            }
+            
+            currentRun.addToScore(levelScore);
+            
+            // Start next level
+            int nextLevel = currentLevel + 1;
+            if (nextLevel <= 10) {
+                startLevel(nextLevel);
+            } else {
+                endRun(true);
+            }
+            
+            System.out.println("Livello " + currentLevel + " Completato! Punteggio: +" + levelScore);
         } else {
-             endRun(false);
+            endRun(false);
         }
     }
 
     public void endRun(boolean win) {
-        // TODO Tommy
+        if (currentRun != null) {
+            // Calculate final bonuses
+            int finalScore = currentRun.getScore();
+            
+            // Add inventory item bonus
+            // TODO: Add method to get inventory items count
+            int remainingItems = currentRun.getInventoryItemCount();
+            finalScore += remainingItems * 20;
+            
+            // Add total errors bonus
+            finalScore += currentRun.getTotalErrors() * 5;
+            
+            // Add victory bonus
+            if (win) {
+                finalScore += 200;
+            }
+            
+            // Apply point bonus multiplier if active
+            int pointBonusLevel = getBuffLevel("POINT_BONUS");
+            if (pointBonusLevel > 0) {
+                double multiplier = getBuffValue("POINT_BONUS", 1.0);
+                finalScore = (int)(finalScore * multiplier);
+            } else {
+                // Add no-buff bonus if no permanent buffs were active
+                if (frozenBuffs.isEmpty()) {
+                    finalScore += 50;
+                }
+            }
+            
+            currentRun.setFinalScore(finalScore);
+            saveCurrentRun();
+            
+            System.out.println("Run Terminata. Vittoria: " + win + " Punteggio Finale: " + finalScore);
+        }
+        
         currentRun = null;
         currentEngine = null;
-        System.out.println("Run Terminata. Vittoria: " + win);
     }
     
     // TODO Tommy
     private RunFrozenBuffs freezeBuffs(User user) {
-        return new RunFrozenBuffs(user.getPermanentBuffLevels());
+        if (user == null) {
+            return new RunFrozenBuffs(Collections.emptyMap());
+        }
+        
+        // Validate buff levels against max values from game data
+        Map<String, Integer> validatedBuffs = user.getPermanentBuffLevels().entrySet().stream()
+            .filter(entry -> {
+                int maxLevel = gameDataService.getMaxBuffLevel(entry.getKey());
+                return entry.getValue() > 0 && entry.getValue() <= maxLevel;
+            })
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                Map.Entry::getValue
+            ));
+        
+        return new RunFrozenBuffs(validatedBuffs);
     }
     
     private int getBuffLevel(String buffId) {
@@ -170,9 +254,21 @@ public class RunService {
         return defaultValue;
     }
     
-    private boolean removeItemFromInventory(String itemId) { return true; }
-    private void addItemToInventory(String itemId, int quantity) { }
+    private boolean removeItemFromInventory(String itemId) {
+        return currentRun != null && currentRun.removeItemFromInventory(itemId);
+    }
 
+    private void addItemToInventory(String itemId, int quantity) {
+        if (currentRun != null) {
+            currentRun.addItemToInventory(itemId, quantity);
+        }
+    }
+
+    private void saveCurrentRun() {
+        if (currentRun != null) {
+            runDAO.save(currentRun);
+        }
+    }
     
     public Run getCurrentRun() {
         return currentRun;

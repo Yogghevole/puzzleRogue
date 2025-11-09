@@ -3,20 +3,22 @@ package model.domain;
 import java.util.Collections;
 import java.util.Map;
 
-/**
- * Rappresenta i Buff che sono stati 'congelati' all'inizio di una Run.
- * TODO: Tommy
- */
 public class RunFrozenBuffs {
+    private final Map<String, Integer> frozenBuffLevels;
 
-    private final Map<String, Integer> buffs;
-
-    public RunFrozenBuffs(Map<String, Integer> buffs) {
-        this.buffs = buffs != null ? buffs : Collections.emptyMap();
+    public RunFrozenBuffs(Map<String, Integer> buffLevels) {
+        this.frozenBuffLevels = Collections.unmodifiableMap(buffLevels);
     }
 
     public int getBuffLevel(String buffId) {
-        return buffs.getOrDefault(buffId, 0);
+        return frozenBuffLevels.getOrDefault(buffId, 0);
     }
-    
+
+    public boolean isEmpty() {
+        return frozenBuffLevels.isEmpty();
+    }
+
+    public Map<String, Integer> getFrozenBuffs() {
+        return frozenBuffLevels;
+    }
 }
