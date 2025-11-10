@@ -100,12 +100,12 @@ CREATE TABLE IF NOT EXISTS Character_Definition (
     char_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     sprite_path TEXT,
-    base_lives INTEGER DEFAULT 3,
+    base_lives INTEGER DEFAULT 3
 );
 
 -- 11. DEFINIZIONE LIVELLI
 CREATE TABLE IF NOT EXISTS Level_Definition (
     level_number INTEGER PRIMARY KEY,
     base_difficulty TEXT NOT NULL,
-    is_boss_level BOOLEAN DEFAULT FALSE,
+    is_boss_level BOOLEAN DEFAULT FALSE
 );

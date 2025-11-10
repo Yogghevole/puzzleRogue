@@ -7,18 +7,21 @@ import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import view.controller.GameController;
 import java.io.IOException;
+import model.db.DatabaseManager;
 
 /**
  * Classe di avvio dell'applicazione JavaFX. 
  */
 public class Main extends Application {
 
-    private static final int WIDTH = 1280;
-    private static final int HEIGHT = 720;
+    private static final int WIDTH = 1920;
+    private static final int HEIGHT = 1000;
 
     @Override
     public void start(Stage primaryStage) throws IOException {
         try {
+            DatabaseManager.getInstance().initializeDatabase();
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/GameView.fxml"));
             BorderPane root = loader.load();
             

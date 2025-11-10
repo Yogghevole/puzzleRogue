@@ -37,7 +37,7 @@ ON CONFLICT(buff_id, level) DO NOTHING;
 -- INVENTORY_CAPACITY
 INSERT INTO Buff_Level_Cost (buff_id, level, cost_points, effect_value) VALUES
 ('INVENTORY_CAPACITY', 1, 600, 1.0),
-('INVENTORY_CAPACITY', 2, 1400, 2.0),
+('INVENTORY_CAPACITY', 2, 1600, 2.0),
 ('INVENTORY_CAPACITY', 3, 3200, 3.0)
 ON CONFLICT(buff_id, level) DO NOTHING;
 

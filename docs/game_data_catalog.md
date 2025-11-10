@@ -26,7 +26,7 @@ These buffs are unlocked by spending **Points** in the "The Ancestor's Legacy" m
 
 | **INVENTORY_CAPACITY**| Inventory Capacity 
 | | | 1 | 600 | Increases Inventory capacity by **+1** slot. |
-| | | 2 | 1400 | Increases Inventory capacity by **+2** slots. |
+| | | 2 | 1600 | Increases Inventory capacity by **+2** slots. |
 | | | 3 | 3200 | Increases Inventory capacity by **+3** slots. |
 
 ---

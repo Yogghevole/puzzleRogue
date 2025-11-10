@@ -8,7 +8,6 @@ import model.domain.SudokuGrid;
 import model.domain.User;
 import model.engine.SudokuEngine;
 import java.util.Collections;
-import java.util.Optional;
 
 /**
  * Gestisce la logica di business di una singola Run.

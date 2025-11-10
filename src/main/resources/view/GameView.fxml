@@ -7,19 +7,13 @@
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
             fx:controller="view.controller.GameController" styleClass="root-pane">
     
-    <stylesheets>
-        <String fx:value="@../style.css" />
-    </stylesheets>
-    
     <center>
-        <StackPane fx:id="mainGameArea" prefHeight="720.0" prefWidth="1280.0">
+        <StackPane fx:id="mainGameArea" prefHeight="1000.0" prefWidth="1920.0" style="-fx-background-color: black;">
             
-            <ImageView fx:id="backgroundImageView" fitHeight="720.0" fitWidth="1280.0" 
-                       preserveRatio="true" smooth="true">
-                <image><Image url="@../assets/backgrounds/levels/default_bg.png" /></image>
-            </ImageView>
+            <ImageView fx:id="backgroundImageView" fitHeight="800.0" fitWidth="1920.0" 
+                       preserveRatio="false" smooth="true" />
 
-            <AnchorPane fx:id="gameContentPane" prefHeight="720.0" prefWidth="1280.0">
+            <AnchorPane fx:id="gameContentPane" prefHeight="1000.0" prefWidth="1920.0">
 
                 <VBox alignment="CENTER" spacing="5.0" AnchorPane.topAnchor="20.0" 
                       AnchorPane.leftAnchor="400.0" AnchorPane.rightAnchor="400.0">
@@ -31,28 +25,27 @@
                         onAction="#handleMenuClick" styleClass="menu-button">
                     <graphic>
                         <ImageView fitHeight="32.0" fitWidth="32.0" preserveRatio="true">
-                             <image><Image url="@../assets/icons/ui/menu.png" /></image>
+                             <image><Image url="@../assets/icons/utils/menu.check_mark.png" /></image>
                         </ImageView>
                     </graphic>
                 </Button>
 
                 <VBox alignment="BOTTOM_CENTER" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="50.0">
-                    <ImageView fx:id="characterSpriteView" fitHeight="550.0" preserveRatio="true" smooth="true">
-                        <image><Image url="@../assets/characters/crusader.png" /></image>
-                    </ImageView>
+                    <ImageView fx:id="characterSpriteView" fitHeight="550.0" preserveRatio="true" smooth="true" />
                     <HBox fx:id="livesHBox" alignment="CENTER" spacing="5.0" /> 
                 </VBox>
 
                 <VBox alignment="BOTTOM_CENTER" AnchorPane.bottomAnchor="0.0" AnchorPane.rightAnchor="50.0">
                     <ImageView fx:id="enemySpriteView" fitHeight="500.0" preserveRatio="true" smooth="true">
-                        <image><Image url="@../assets/enemies/easy/enemy_a.png" /></image>
+                        <image><Image url="@../assets/enemies/easy/crone.png" /></image>
                     </ImageView>
                 </VBox>
 
-                <GridPane fx:id="sudokuGridContainer" alignment="CENTER" AnchorPane.topAnchor="100.0" 
-                          AnchorPane.leftAnchor="400.0" AnchorPane.rightAnchor="400.0" 
-                          styleClass="sudoku-grid-container" prefHeight="500.0" prefWidth="500.0">
-                    </GridPane>
+                <StackPane alignment="CENTER" AnchorPane.topAnchor="100.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+                    <GridPane fx:id="sudokuGridContainer" alignment="CENTER"
+                              styleClass="sudoku-grid-container" prefHeight="650.0" prefWidth="650.0"
+                              minHeight="650.0" minWidth="650.0" maxHeight="650.0" maxWidth="650.0" />
+                </StackPane>
                 
                 <HBox fx:id="inputControlHBox" alignment="CENTER" spacing="20.0" AnchorPane.bottomAnchor="20.0" 
                       AnchorPane.leftAnchor="200.0" AnchorPane.rightAnchor="200.0" />

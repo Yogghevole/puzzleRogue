@@ -16,9 +16,15 @@ javafx {
 }
 dependencies {
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.9.8")
-    val jUnitVersion = "6.0.1"
+    implementation("org.xerial:sqlite-jdbc:3.45.2.0")
+    val jUnitVersion = "5.10.2"
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jUnitVersion")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.withType<Test> {

@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Servizio per accedere ai dati statici di configurazione del gioco (regole, costi, definizioni).
+ * Servizio per accedere ai dati statici di configurazione del gioco .
  */
 public class GameDataService {
 
@@ -19,9 +19,6 @@ public class GameDataService {
         this.dbManager = dbManager;
     }
 
-    /**
-     * Recupera il costo e il valore dell'effetto di un buff specifico per un dato livello.
-     */
     public Map<String, Number> getBuffLevelData(String buffId, int level) {
         String sql = "SELECT cost_points, effect_value FROM Buff_Level_Cost WHERE buff_id = ? AND level = ?";
         Map<String, Number> data = new HashMap<>();
@@ -44,9 +41,6 @@ public class GameDataService {
         return data;
     }
 
-    /**
-     * Restituisce la difficoltà base di un livello (es. Livello 5 -> HARD).
-     */
     public String getBaseDifficultyByLevel(int levelNumber) {
         String sql = "SELECT base_difficulty FROM Level_Definition WHERE level_number = ?";
         
@@ -66,9 +60,6 @@ public class GameDataService {
         return "UNKNOWN";
     }
 
-    /**
-     * Restituisce le vite base di un personaggio.
-     */
     public int getCharacterBaseLives(String charId) {
         String sql = "SELECT base_lives FROM Character_Definition WHERE char_id = ?";
         
@@ -86,5 +77,37 @@ public class GameDataService {
             System.err.println("Errore SQL nel recupero vite base per " + charId + ": " + e.getMessage());
         }
         return 0; 
+    }
+
+    public int getTotalLevels() {
+        String sql = "SELECT COUNT(*) AS cnt FROM Level_Definition";
+        try (Connection conn = dbManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt("cnt");
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore SQL nel conteggio dei livelli: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    public boolean isBossLevel(int levelNumber) {
+        String sql = "SELECT is_boss_level FROM Level_Definition WHERE level_number = ?";
+        try (Connection conn = dbManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, levelNumber);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Object val = rs.getObject("is_boss_level");
+                    if (val instanceof Boolean) return (Boolean) val;
+                    if (val instanceof Number) return ((Number) val).intValue() != 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore SQL nel recupero flag boss per livello " + levelNumber + ": " + e.getMessage());
+        }
+        return false;
     }
 }
