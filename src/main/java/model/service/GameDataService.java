@@ -110,4 +110,23 @@ public class GameDataService {
         }
         return false;
     }
+    
+    public int getMaxBuffLevel(String buffId) {
+        String sql = "SELECT MAX(level) as max_level FROM Buff_Level_Cost WHERE buff_id = ?";
+        
+        try (Connection conn = dbManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, buffId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("max_level");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore SQL nel recupero livello massimo buff " + buffId + ": " + e.getMessage());
+        }
+        return 0;
+    }
 }

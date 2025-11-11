@@ -1,85 +1,57 @@
 package model.domain;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Rappresenta una singola Run in corso o completata.
  */
 public class Run {
 
-    private Integer runId;
+    private Integer id;
     private final String userNick;
+    private final String characterId;
     private int livesRemaining;
-    private final String characterSelected;
     private int totalErrors;
-    private RunLevelState currentLevelState; 
-    private final List<RunInventoryItem> inventory; 
+    private int score;
+    private RunLevelState currentLevelState;
+    private Map<String, Integer> inventory;
 
-    public Run(Integer runId, String userNick, int livesRemaining, String characterSelected, int totalErrors, List<RunInventoryItem> inventory) {
-        this.runId = runId;
+    public Run(String userNick, int livesRemaining, String characterId) {
         this.userNick = userNick;
         this.livesRemaining = livesRemaining;
-        this.characterSelected = characterSelected;
-        this.totalErrors = totalErrors;
-        this.inventory = inventory != null ? inventory : Collections.emptyList();
-    }
-    
-    public Run(String userNick, int startingLives, String characterSelected) {
-        this(null, userNick, startingLives, characterSelected, 0, null);
-    }
-    
-    // --- Gestione Inventario ---
-    
-    public static class RunInventoryItem {
-        private final String itemTypeId;
-        private int quantity;
-        private final int slotCost;
-
-        public RunInventoryItem(String itemTypeId, int quantity, int slotCost) {
-            this.itemTypeId = itemTypeId;
-            this.quantity = quantity;
-            this.slotCost = slotCost;
-        }
-
-        public String getItemTypeId() { return itemTypeId; }
-        public int getQuantity() { return quantity; }
-        public int getSlotCost() { return slotCost; }
-        public void setQuantity(int quantity) { this.quantity = quantity; }
-    }
-    
-    // --- Metodi Getters e Setters ---
-
-    public Integer getRunId() {
-        return runId;
+        this.characterId = characterId;
+        this.totalErrors = 0;
+        this.score = 0;
+        this.inventory = new HashMap<>();
     }
 
-    public void setRunId(Integer runId) {
-        this.runId = runId;
+    public void setId(Integer id) {
+        this.id = id;
     }
-    
+
+    public Integer getId() {
+        return id;
+    }
+
     public String getUserNick() {
         return userNick;
+    }
+
+    public String getCharacterId() {
+        return characterId;
     }
 
     public int getLivesRemaining() {
         return livesRemaining;
     }
 
-    public void setLivesRemaining(int livesRemaining) {
-        this.livesRemaining = livesRemaining;
-    }
-    
     public void loseLife() {
-        this.livesRemaining = Math.max(0, this.livesRemaining - 1);
-    }
-    
-    public void addLife() {
-        this.livesRemaining++;
+        this.livesRemaining--;
     }
 
-    public String getCharacterSelected() {
-        return characterSelected;
+    public void addLife() {
+        this.livesRemaining++;
     }
 
     public int getTotalErrors() {
@@ -90,6 +62,26 @@ public class Run {
         this.totalErrors++;
     }
 
+    public void setTotalErrors(int totalErrors) {
+        this.totalErrors = totalErrors;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void addToScore(int points) {
+        this.score += points;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    public void setFinalScore(int finalScore) {
+        this.score = finalScore;
+    }
+
     public RunLevelState getCurrentLevelState() {
         return currentLevelState;
     }
@@ -97,8 +89,29 @@ public class Run {
     public void setCurrentLevelState(RunLevelState currentLevelState) {
         this.currentLevelState = currentLevelState;
     }
-    
-    public List<RunInventoryItem> getInventory() {
+
+    public Map<String, Integer> getInventory() {
         return inventory;
+    }
+
+    public int getInventoryItemCount() {
+        return inventory.values().stream().mapToInt(Integer::intValue).sum();
+    }
+
+    public boolean addItemToInventory(String itemId, int quantity) {
+        inventory.merge(itemId, quantity, Integer::sum);
+        return true;
+    }
+
+    public boolean removeItemFromInventory(String itemId) {
+        Integer count = inventory.get(itemId);
+        if (count == null || count <= 0) return false;
+        
+        if (count == 1) {
+            inventory.remove(itemId);
+        } else {
+            inventory.put(itemId, count - 1);
+        }
+        return true;
     }
 }
