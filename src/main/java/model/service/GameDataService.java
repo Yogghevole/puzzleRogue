@@ -36,7 +36,7 @@ public class GameDataService {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Errore SQL nel recupero dati Buff per " + buffId + " al livello " + level + ": " + e.getMessage());
+            System.err.println("SQL error retrieving Buff data for " + buffId + " at level " + level + ": " + e.getMessage());
         }
         return data;
     }
@@ -55,7 +55,7 @@ public class GameDataService {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Errore SQL nel recupero difficoltà livello " + levelNumber + ": " + e.getMessage());
+            System.err.println("SQL error retrieving difficulty for level " + levelNumber + ": " + e.getMessage());
         }
         return "UNKNOWN";
     }
@@ -74,7 +74,7 @@ public class GameDataService {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Errore SQL nel recupero vite base per " + charId + ": " + e.getMessage());
+            System.err.println("SQL error retrieving base lives for " + charId + ": " + e.getMessage());
         }
         return 0; 
     }
@@ -88,7 +88,7 @@ public class GameDataService {
                 return rs.getInt("cnt");
             }
         } catch (SQLException e) {
-            System.err.println("Errore SQL nel conteggio dei livelli: " + e.getMessage());
+            System.err.println("SQL error counting levels: " + e.getMessage());
         }
         return 0;
     }
@@ -106,7 +106,7 @@ public class GameDataService {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Errore SQL nel recupero flag boss per livello " + levelNumber + ": " + e.getMessage());
+            System.err.println("SQL error retrieving boss flag for level " + levelNumber + ": " + e.getMessage());
         }
         return false;
     }
@@ -125,7 +125,7 @@ public class GameDataService {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Errore SQL nel recupero livello massimo buff " + buffId + ": " + e.getMessage());
+            System.err.println("SQL error retrieving max buff level for " + buffId + ": " + e.getMessage());
         }
         return 0;
     }

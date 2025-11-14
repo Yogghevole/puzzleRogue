@@ -40,13 +40,13 @@ public class DatabaseManager {
     }
 
     public void initializeDatabase() {
-        System.out.println("Inizializzazione del Database (" + DB_FILE_NAME + ") in corso...");
+        System.out.println("Initializing Database (" + DB_FILE_NAME + ")...");
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             executeSqlScript(conn, CREATE_SCRIPT);
             executeSqlScript(conn, INSERT_SCRIPT);
-            System.out.println("Database inizializzato con successo.");
+        System.out.println("Database initialized successfully.");
         } catch (SQLException e) {
-            System.err.println("Errore fatale durante l'inizializzazione del Database: " + e.getMessage());
+            System.err.println("Fatal error during Database initialization: " + e.getMessage());
         }
     }
     
@@ -55,7 +55,7 @@ public class DatabaseManager {
              Statement stmt = conn.createStatement()) {
 
             if (is == null) {
-                System.err.println("Script SQL non trovato: " + resourcePath);
+            System.err.println("SQL script not found: " + resourcePath);
                 return;
             }
 
@@ -68,8 +68,8 @@ public class DatabaseManager {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Errore di lettura/esecuzione dello script SQL: " + e.getMessage());
-            throw new SQLException("Fallimento nell'esecuzione dello script " + resourcePath, e);
+            System.err.println("Error reading/executing SQL script: " + e.getMessage());
+            throw new SQLException("Failed to execute script " + resourcePath, e);
         }
     }
 }

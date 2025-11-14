@@ -39,8 +39,6 @@ public class SudokuEngine implements PuzzleEngine {
         );
     }
     
-    // --- Operazioni Base ---
-    
     @Override
     public boolean insertValue(int row, int col, int value) {
         if (initialGrid[row][col] != 0) {
@@ -80,8 +78,6 @@ public class SudokuEngine implements PuzzleEngine {
         }
         return true;
     }
-    
-    // --- Operazioni Note ---
 
     @Override
     public void toggleNote(int row, int col, int candidate) {
@@ -115,8 +111,6 @@ public class SudokuEngine implements PuzzleEngine {
         }
     }
 
-    // --- Operazioni Oggetti/Buff  ---
-
     @Override
     public Optional<int[]> revealHint() {
         Set<int[]> emptyCells = new HashSet<>();
@@ -145,8 +139,18 @@ public class SudokuEngine implements PuzzleEngine {
 
         return Optional.of(new int[]{r, c, correctValue});
     }
-    
-    // --- Getters per l'UI/ViewModel ---
+
+    public Optional<Integer> revealHintAt(int row, int col) {
+        if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return Optional.empty();
+        if (initialGrid[row][col] != 0) return Optional.empty();
+        if (userGrid[row][col] != 0) return Optional.empty();
+
+        int correctValue = solvedGrid[row][col];
+        userGrid[row][col] = correctValue;
+        notes[row][col].clear();
+        removeCandidateFromPeers(row, col, correctValue);
+        return Optional.of(correctValue);
+    }
 
     @Override
     public int getCellValue(int row, int col) {

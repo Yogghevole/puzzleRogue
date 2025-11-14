@@ -32,8 +32,7 @@ public class UserDAO {
             return stmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            // Se l'utente esiste già (violazione PK) o altro errore SQL.
-            System.err.println("Errore SQL nella creazione dell'utente " + nick + ": " + e.getMessage());
+        System.err.println("SQL error creating user " + nick + ": " + e.getMessage());
             return false;
         }
     }
@@ -57,7 +56,7 @@ public class UserDAO {
                             rs.getInt("points_total"),
                             rs.getInt("runs_completed"),
                             rs.getInt("runs_won"),
-                            null // Buffs caricati separatamente
+                            null 
                         );
                     }
                 }
@@ -70,7 +69,7 @@ public class UserDAO {
             return user;
 
         } catch (SQLException e) {
-            System.err.println("Errore SQL nel caricamento dell'utente " + nick + ": " + e.getMessage());
+        System.err.println("SQL error loading user " + nick + ": " + e.getMessage());
             return null;
         }
     }
@@ -115,7 +114,7 @@ public class UserDAO {
             return true;
             
         } catch (SQLException e) {
-            System.err.println("Errore SQL durante l'aggiornamento dell'utente " + user.getNick() + ": " + e.getMessage());
+        System.err.println("SQL error updating user " + user.getNick() + ": " + e.getMessage());
             return false;
         }
     }

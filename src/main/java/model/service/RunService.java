@@ -87,7 +87,7 @@ public class RunService {
         
         if (getBuffLevel("FIRST_ERROR_PROTECT") > 0 && !state.isProtectionUsed()) {
             state.setProtectionUsed(true);
-            System.out.println("Protezione Primo Errore attivata! Vita salvata.");
+        System.out.println("First Error Protection activated! Life saved.");
             return;
         }
 
@@ -121,7 +121,7 @@ public class RunService {
                 if (currentRun.getLivesRemaining() > 1) {
                     currentRun.loseLife();
                     success = currentEngine.revealHint().isPresent() && 
-                             currentEngine.revealHint().isPresent(); // Two hints
+                             currentEngine.revealHint().isPresent();
                 }
                 break;
                     
@@ -160,7 +160,7 @@ public class RunService {
                 endRun(true);
             }
             
-            System.out.println("Livello " + currentLevel + " Completato! Punteggio: +" + levelScore);
+        System.out.println("Level " + currentLevel + " Completed! Score: +" + levelScore);
         } else {
             endRun(false);
         }
@@ -192,7 +192,7 @@ public class RunService {
             currentRun.setFinalScore(finalScore);
             saveCurrentRun();
             
-            System.out.println("Run Terminata. Vittoria: " + win + " Punteggio Finale: " + finalScore);
+        System.out.println("Run Ended. Victory: " + win + " Final Score: " + finalScore);
         }
         
         currentRun = null;
@@ -237,6 +237,17 @@ public class RunService {
         if (currentRun != null) {
             currentRun.addItemToInventory(itemId, quantity);
         }
+    }
+
+    public boolean removeItem(String itemId) {
+        boolean ok = removeItemFromInventory(itemId);
+        if (ok) saveCurrentRun();
+        return ok;
+    }
+
+    public void addItem(String itemId) {
+        addItemToInventory(itemId, 1);
+        saveCurrentRun();
     }
 
     private void saveCurrentRun() {

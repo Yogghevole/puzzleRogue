@@ -9,7 +9,10 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
+import javafx.scene.Node;
+import javafx.scene.input.MouseEvent;
+import view.manager.LivesUIManager;
+import view.manager.InventorySlotsUIManager;
 import javafx.geometry.Pos;
 import model.service.RunService;
 import model.service.GameDataService;
@@ -25,6 +28,15 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import view.manager.BackgroundManager;
+import view.manager.EnemySpriteManager;
+import view.manager.PlayerSpriteManager;
+import view.manager.CursorManager;
+import view.manager.CharacterSelectionManager;
+import view.manager.ItemSelectionManager;
+import view.manager.SudokuUIManager;
+import view.manager.GameInputManager;
+import view.manager.HudManager;
+import view.manager.EndGameManager;
 
 public class GameController {
     
@@ -34,15 +46,16 @@ public class GameController {
     @FXML private Label levelLabel;
     @FXML private Label difficultyLabel;
     @FXML private Button menuButton;
+    @FXML private Button itemSelectionButton;
     @FXML private ImageView characterSpriteView;
     @FXML private ImageView enemySpriteView;
     @FXML private GridPane sudokuGridContainer;
     @FXML private HBox livesHBox;
     @FXML private HBox inputControlHBox;
+    @FXML private HBox inventorySlotsHBox;
     
     private RunService runService;
     private static final int GRID_SIZE = 9;
-    
     private Label[][] cellLabels = new Label[GRID_SIZE][GRID_SIZE]; 
     private Label[][][] noteLabels = new Label[GRID_SIZE][GRID_SIZE][GRID_SIZE];
     private GridPane[][] noteGrids = new GridPane[GRID_SIZE][GRID_SIZE];
@@ -50,6 +63,8 @@ public class GameController {
     private VBox selectedCellVBox = null;
     private int selectedRow = -1;
     private int selectedCol = -1;
+    @SuppressWarnings("unused")
+    private Integer lastHighlightedNumber = null;
     private int currentLevel = 1;
     private int totalLevels = 10;
     private final GameDataService gameDataService = new GameDataService(DatabaseManager.getInstance());
@@ -59,16 +74,21 @@ public class GameController {
     private final SudokuGenerator sudokuGenerator = new SudokuGenerator(gameDataService);
     private model.engine.SudokuEngine sudokuEngine;
     private final BackgroundManager backgroundManager = new BackgroundManager();
-
-    private static class CharDef {
-        final String id;
-        final String name;
-        final String portrait;
-        final String sprite;
-        CharDef(String id, String name, String portrait, String sprite) {
-            this.id = id; this.name = name; this.portrait = portrait; this.sprite = sprite;
-        }
-    }
+    private final EnemySpriteManager enemySpriteManager = new EnemySpriteManager();
+    private final PlayerSpriteManager playerSpriteManager = new PlayerSpriteManager();
+    private final CursorManager cursorManager = new CursorManager();
+    private final CharacterSelectionManager characterSelectionManager = new CharacterSelectionManager();
+    private final ItemSelectionManager itemSelectionManager = new ItemSelectionManager();
+    private final SudokuUIManager sudokuUIManager = new SudokuUIManager();
+    private final GameInputManager gameInputManager = new GameInputManager();
+    private final HudManager hudManager = new HudManager();
+    private final EndGameManager endGameManager = new EndGameManager();
+    private boolean firstErrorProtectionActive = false;
+    private boolean firstErrorProtectionUsed = false;
+    private boolean noteModeActive = false;
+    @SuppressWarnings("unused")
+    private String currentTheme = null;
+    private int initialMaxLives = 0;
 
     public void setRunService(RunService runService) {
         this.runService = runService;
@@ -77,25 +97,64 @@ public class GameController {
     @FXML
     public void initialize() {
         try {
-            Font.loadFont(getClass().getResourceAsStream("/assets/fonts/dark_font_Regular.ttf"), 10);  
-            Font.loadFont(getClass().getResourceAsStream("/assets/fonts/dark_font_DemiBold.ttf"), 10);
             if (backgroundImageView != null) {
                 backgroundImageView.setPreserveRatio(false);
                 backgroundImageView.setFitWidth(1920);
                 backgroundImageView.setFitHeight(800);
                 StackPane.setAlignment(backgroundImageView, Pos.CENTER);
+                backgroundImageView.setPickOnBounds(true);
+                backgroundImageView.setOnMouseClicked(e -> {
+                    clearSelectedCell();
+                    clearNumberHighlights();
+                    clearRegionHighlights();
+                });
+            }
+            if (mainGameArea != null) {
+                mainGameArea.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+                    Node target = (Node) e.getTarget();
+                    boolean outsideSudoku = (sudokuGridContainer != null && !isDescendantOf(target, sudokuGridContainer));
+                    boolean onInputs = (inputControlHBox != null && isDescendantOf(target, inputControlHBox))
+                                     || (inventorySlotsHBox != null && isDescendantOf(target, inventorySlotsHBox));
+                    if (outsideSudoku && !onInputs) {
+                        clearSelectedCell();
+                        clearNumberHighlights();
+                        clearRegionHighlights();
+                    }
+                });
             }
             backgroundManager.preloadAll();
             
         } catch (Exception e) {
-            System.err.println("Errore nel caricamento del font o delle immagini: " + e.getMessage());
+        System.err.println("Error loading font or images: " + e.getMessage());
         } 
         
         buildSudokuGrid();
 
         if (menuButton != null) {
-            menuButton.setText("COMPLETA LIVELLO");
+            menuButton.setText("");
             menuButton.setOnAction(e -> completeLevelAndAdvance());
+
+            menuButton.setOnMouseEntered(e -> {
+                if (menuButton.getGraphic() instanceof ImageView) {
+                    ImageView iv = (ImageView) menuButton.getGraphic();
+                    javafx.scene.effect.Glow glow = new javafx.scene.effect.Glow(0.35);
+                    javafx.scene.effect.DropShadow shadow = new javafx.scene.effect.DropShadow();
+                    shadow.setRadius(6.0);
+                    shadow.setSpread(0.1);
+                    shadow.setColor(javafx.scene.paint.Color.web("#ffffff88"));
+                    iv.setEffect(new javafx.scene.effect.Blend(
+                        javafx.scene.effect.BlendMode.SRC_OVER,
+                        glow,
+                        shadow
+                    ));
+                }
+            });
+            menuButton.setOnMouseExited(e -> {
+                if (menuButton.getGraphic() instanceof ImageView) {
+                    ImageView iv = (ImageView) menuButton.getGraphic();
+                    iv.setEffect(null);
+                }
+            });
         }
 
         int count = gameDataService.getTotalLevels();
@@ -103,100 +162,70 @@ public class GameController {
             totalLevels = count;
         }
 
-        showCharacterSelectionModal();
+        backgroundManager.resetRun();
         hideGameUIForSelection(true);
+        applyBackgroundForCurrentLevel();
+        showCharacterSelectionModal();
 
         javafx.application.Platform.runLater(this::applyCustomCursor);
+
+        if (this.runService != null) {
+            this.runService.getCurrentRun();
+        }
+
+        livesUIManager = new LivesUIManager(livesHBox, "/assets/icons/utils/heart.png");
+        livesUIManager.setLives(0);
+
+        inventorySlotsUIManager = new InventorySlotsUIManager(inventorySlotsHBox,
+                "/assets/icons/items/placeholder.png");
+        inventorySlotsUIManager.setCapacityLevel(0);
+        initializeInventoryInteraction();
+
+        if (mainGameArea != null) {
+            mainGameArea.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+                Object tgt = e.getTarget();
+                if (tgt instanceof Node) {
+                    Node n = (Node) tgt;
+                    boolean insideGrid = isDescendantOf(n, sudokuGridContainer);
+                    boolean insideControls = isDescendantOf(n, inputControlHBox) || isDescendantOf(n, inventorySlotsHBox);
+                    if (!insideGrid && !insideControls) {
+                        clearSelectedCell();
+                        clearNumberHighlights();
+                    }
+                } else {
+                    clearSelectedCell();
+                    clearNumberHighlights();
+                }
+            });
+        }
     }
+
     
     private void buildSudokuGrid() {
-        double cellSize = Math.floor(650.0 / GRID_SIZE);
-        sudokuGridContainer.setHgap(0);
-        sudokuGridContainer.setVgap(0);
-        sudokuGridContainer.setPadding(new javafx.geometry.Insets(0));
-        
-        for (int r = 0; r < GRID_SIZE; r++) {
-            for (int c = 0; c < GRID_SIZE; c++) {
-                VBox cellContainer = new VBox();
-                cellContainer.setMinSize(cellSize, cellSize);
-                cellContainer.setPrefSize(cellSize, cellSize);
-                cellContainer.setMaxSize(cellSize, cellSize);
-                cellContainer.getStyleClass().add("sudoku-cell");
-                cellContainer.getStyleClass().add("unselected-cell");
-                int leftW = (c == 0 || c == 3 || c == 6) ? 4 : 1;
-                int rightW = (c == 8) ? 4 : 1;
-                int topW = (r == 0 || r == 3 || r == 6) ? 4 : 1;
-                int bottomW = (r == 8) ? 4 : 1;
-                String thin = "#444444";
-                String heavy = "#777777";
-                String topColor = (topW > 1) ? heavy : thin;
-                String rightColor = (rightW > 1) ? heavy : thin;
-                String bottomColor = (bottomW > 1) ? heavy : thin;
-                String leftColor = (leftW > 1) ? heavy : thin;
-                cellContainer.setStyle(String.format(
-                    "-fx-border-color: %s %s %s %s; -fx-border-width: %d %d %d %d;",
-                    topColor, rightColor, bottomColor, leftColor,
-                    topW, rightW, bottomW, leftW
-                ));
-                
-                GridPane noteGrid = new GridPane();
-                noteGrid.setPrefSize(cellSize, cellSize);
-                noteGrid.setVisible(false);
-                for (int i = 0; i < 3; i++) {
-                    for (int j = 0; j < 3; j++) {
-                        int noteValue = i * 3 + j + 1;
-                        Label noteLabel = new Label(String.valueOf(noteValue));
-                        noteLabel.getStyleClass().add("note-label");
-                        noteLabels[r][c][noteValue - 1] = noteLabel; 
-                        
-                        noteGrid.add(noteLabel, j, i);
-                    }
-                }
-                
-                Label valueLabel = new Label("");
-                valueLabel.getStyleClass().add("initial-number"); 
-                valueLabel.setVisible(false);
-
-                StackPane contentPane = new StackPane(noteGrid, valueLabel);
-                cellContainer.getChildren().add(contentPane);
-                
-                cellLabels[r][c] = valueLabel;
-                noteGrids[r][c] = noteGrid;
-                sudokuCells[r][c] = cellContainer;
-                
-                final int finalR = r;
-                final int finalC = c;
-                cellContainer.setOnMouseClicked(e -> handleCellClick(finalR, finalC));
-                
-                sudokuGridContainer.add(cellContainer, c, r);
-            }
-        }
-        sudokuGridContainer.setPrefSize(650, 650);
-        sudokuGridContainer.setMinSize(javafx.scene.layout.Region.USE_PREF_SIZE, javafx.scene.layout.Region.USE_PREF_SIZE);
-        sudokuGridContainer.setMaxSize(javafx.scene.layout.Region.USE_PREF_SIZE, javafx.scene.layout.Region.USE_PREF_SIZE);
-        buildInputControls();
+        sudokuUIManager.build(
+            sudokuGridContainer,
+            GRID_SIZE,
+            cellLabels,
+            noteLabels,
+            noteGrids,
+            sudokuCells,
+            (r, c) -> handleCellClick(r, c)
+        );
+        gameInputManager.build(
+            inputControlHBox,
+            this::handleNumberInput,
+            this::toggleNoteMode,
+            this::handleClearCell
+        );
+        gameInputManager.setNoteModeActive(false);
     }
     
-    private void buildInputControls() {
-        for (int i = 1; i <= 9; i++) {
-            Button numButton = new Button(String.valueOf(i));
-            numButton.getStyleClass().add("input-number-button");
-            final int value = i;
-            numButton.setOnAction(e -> handleNumberInput(value));
-            inputControlHBox.getChildren().add(numButton);
-        }
-        
-        Button noteModeButton = new Button("NOTE");
-        noteModeButton.setOnAction(e -> toggleNoteMode());
-        inputControlHBox.getChildren().add(noteModeButton);
-        
-        Button clearButton = new Button("CLEAR");
-        clearButton.setOnAction(e -> handleClearCell());
-        inputControlHBox.getChildren().add(clearButton);
-        
-    }
+    
     
     private void handleCellClick(int r, int c) {
+        clearRegionHighlights();
+        clearNumberHighlights();
+
         if (selectedCellVBox != null) {
             selectedCellVBox.getStyleClass().remove("selected-cell");
             selectedCellVBox.getStyleClass().add("unselected-cell");
@@ -205,126 +234,158 @@ public class GameController {
         VBox newSelection = sudokuCells[r][c];
         newSelection.getStyleClass().remove("unselected-cell");
         newSelection.getStyleClass().add("selected-cell");
-        
+
         selectedCellVBox = newSelection;
         selectedRow = r;
         selectedCol = c;
+
+        applyRegionHighlights(r, c);
+
+        Label clickedLbl = cellLabels[r][c];
+        if (clickedLbl != null && clickedLbl.isVisible()) {
+            String t = clickedLbl.getText();
+            if (t != null && !t.isEmpty()) {
+                try {
+                    int v = Integer.parseInt(t);
+                    highlightMatchingNumbersStrong(v);
+                } catch (NumberFormatException ignore) { }
+            }
+        }
         
     }
     
     
 
     private void toggleNoteMode() {
-        System.out.println("Modalità Note attivata/disattivata.");
+        noteModeActive = !noteModeActive;
+        gameInputManager.setNoteModeActive(noteModeActive);
+        System.out.println("Note Mode " + (noteModeActive ? "ON" : "OFF"));
+        clearNumberHighlights();
     }
 
     private void handleClearCell() {
-        if (selectedRow != -1 && selectedCol != -1) {
-            System.out.println("Cancellazione cella (" + selectedRow + "," + selectedCol + ")");
+        if (selectedRow == -1 || selectedCol == -1 || sudokuEngine == null) return;
+        clearNumberHighlights();
+
+        GridPane ng = noteGrids[selectedRow][selectedCol];
+        if (ng != null && ng.isVisible()) {
+            sudokuEngine.clearNotes(selectedRow, selectedCol);
+            ng.setVisible(false);
+            for (int k = 0; k < GRID_SIZE; k++) {
+                if (noteLabels[selectedRow][selectedCol][k] != null) {
+                    noteLabels[selectedRow][selectedCol][k].setVisible(false);
+                }
+            }
+            return;
+        }
+
+        Label lbl = cellLabels[selectedRow][selectedCol];
+        if (lbl != null && lbl.isVisible() && lbl.getStyleClass().contains("user-number-error")) {
+            sudokuEngine.clearCell(selectedRow, selectedCol);
+            lbl.setText("");
+            lbl.setVisible(false);
+            lbl.getStyleClass().remove("user-number-error");
+            refreshNumberButtonsAvailability();
         }
     }
     
     @FXML
     private void handleMenuClick() {
-        System.out.println("Mostra Menu Opzioni.");
+        System.out.println("Show Options Menu.");
     }
     
     private void showCharacterSelectionModal() {
-        backgroundManager.resetRun();
-        modalContainer.getStyleClass().clear();
-        modalContainer.getStyleClass().add("modal-overlay");
-        modalContainer.setVisible(true);
-
-        javafx.scene.layout.StackPane selectionPanel = new javafx.scene.layout.StackPane();
-        javafx.scene.image.ImageView panelBackground = new javafx.scene.image.ImageView(
-            new javafx.scene.image.Image(getClass().getResourceAsStream("/assets/menu/character_selection.png"))
-        );
-        panelBackground.setFitWidth(1400);
-        panelBackground.setFitHeight(800);
-        panelBackground.setPreserveRatio(false);
-
-        javafx.scene.layout.VBox contentBox = new javafx.scene.layout.VBox();
-        contentBox.setPickOnBounds(false);
-        contentBox.setSpacing(12);
-        contentBox.setAlignment(javafx.geometry.Pos.CENTER);
-        contentBox.setPadding(new javafx.geometry.Insets(20, 20, 20, 20));
-        contentBox.setTranslateY(30);
-
-
-        javafx.scene.layout.HBox charactersRow = new javafx.scene.layout.HBox();
-        charactersRow.setSpacing(5);
-        charactersRow.setAlignment(javafx.geometry.Pos.CENTER);
-
-        java.util.List<CharDef> defs = java.util.List.of(
-            new CharDef("CRUSADER", "Crusader", "/assets/icons/characters/crusader_portrait.png", "/assets/characters/crusader.png"),
-            new CharDef("HIGHWAYMAN", "Highwayman", "/assets/icons/characters/highwayman_portrait.png", "/assets/characters/highwayman.png"),
-            new CharDef("JESTER", "Jester", "/assets/icons/characters/jester_portrait.png", "/assets/characters/jester.png"),
-            new CharDef("OCCULTIST", "Occultist", "/assets/icons/characters/occultist_portrait.png", "/assets/characters/occultist.png"),
-            new CharDef("PLAGUEDOCTOR", "Plaguedoctor", "/assets/icons/characters/plague_doctor_portrait.png", "/assets/characters/plague_doctor.png")
-        );
-
-        for (CharDef d : defs) {
-            javafx.scene.image.ImageView portrait = new javafx.scene.image.ImageView(
-                new javafx.scene.image.Image(getClass().getResourceAsStream(d.portrait))
-            );
-            portrait.setFitWidth(70);
-            portrait.setFitHeight(70);
-            portrait.setPreserveRatio(true);
-            portrait.getStyleClass().add("character-portrait");
-
-            javafx.scene.control.Label nameLabel = new javafx.scene.control.Label(d.name);
-            nameLabel.getStyleClass().add("character-name-label");
-
-            javafx.scene.layout.VBox option = new javafx.scene.layout.VBox(portrait, nameLabel);
-            option.getStyleClass().add("character-option");
-            option.setAlignment(javafx.geometry.Pos.CENTER);
-            option.setSpacing(8);
-            option.setPrefWidth(160);
-            option.setMinWidth(160);
-            option.setMaxWidth(160);
-
-            option.setOnMouseEntered(ev -> {
-                portrait.setFitWidth(76);
-                portrait.setFitHeight(76);
-            });
-            option.setOnMouseExited(ev -> {
-                portrait.setFitWidth(70);
-                portrait.setFitHeight(70);
-            });
-
-            option.setOnMouseClicked(e -> selectCharacter(d));
-            portrait.setOnMouseClicked(e -> selectCharacter(d));
-            nameLabel.setOnMouseClicked(e -> selectCharacter(d));
-
-            charactersRow.getChildren().add(option);
-        }
-
-        contentBox.getChildren().add(charactersRow);
-        selectionPanel.getChildren().addAll(panelBackground, contentBox);
-
-        modalContainer.getChildren().clear();
-        modalContainer.getChildren().add(selectionPanel);
-        javafx.scene.layout.StackPane.setAlignment(selectionPanel, javafx.geometry.Pos.CENTER);
-        System.out.println("Mostra Selezione Personaggio.");
+        characterSelectionManager.show(modalContainer, opt -> selectCharacterFromOption(opt));
     }
 
-    private void selectCharacter(CharDef def) {
+    @FXML
+    private void handleItemSelectionClick() {
+        hideGameUIForSelection(true);
+        showItemSelectionModal();
+    }
+    private void showItemSelectionModal() {
+        if (modalContainer == null) return;
+        itemSelectionManager.show(modalContainer, this::onItemSelectedFromOption);
+    }
+
+    private void onItemSelectedFromOption(view.manager.ItemSelectionManager.ItemOption opt) {
         try {
-            characterSpriteView.setImage(new Image(getClass().getResourceAsStream(def.sprite)));
+            if (modalContainer != null) {
+                modalContainer.getChildren().clear();
+                modalContainer.setVisible(false);
+            }
+            hideGameUIForSelection(false);
+
+            if (opt != null && opt.id != null && !"NO_ITEM".equals(opt.id)) {
+                if (runService != null) {
+                    runService.addItem(opt.id);
+                }
+                if (inventorySlotsUIManager != null) {
+                    inventorySlotsUIManager.addItemImage(opt.iconPath);
+                }
+            }
+
+            completeLevelAndAdvance();
+        } catch (Exception e) {
+        System.err.println("Error handling item selection: " + e.getMessage());
+            completeLevelAndAdvance();
+        }
+    }
+    
+
+    private void selectCharacterFromOption(view.manager.CharacterSelectionManager.Option opt) {
+        try {
+            Image img = new Image(getClass().getResourceAsStream(opt.sprite));
+            playerSpriteManager.applyTo(characterSpriteView, img, opt.id);
             modalContainer.setVisible(false);
             modalContainer.getStyleClass().clear();
             modalContainer.getChildren().clear();
             characterSelected = true;
 
+            applyThemeForCharacter(opt.id);
+
             hideGameUIForSelection(false);
             updateLevelAndDifficultyUI();
-            applyBackgroundForCurrentLevel();
             updateSkipButtonState();
 
             generateSudokuForCurrentLevel();
             spawnEnemyForCurrentLevel();
+
+            int baseLives = gameDataService.getCharacterBaseLives(opt.id);
+            if (baseLives < 0) baseLives = 0;
+            if (livesUIManager == null) {
+                livesUIManager = new LivesUIManager(livesHBox, "/assets/icons/utils/heart.png");
+            }
+            livesUIManager.setLives(baseLives);
+            initialMaxLives = baseLives;
         } catch (Exception e) {
-            System.err.println("Errore nel set del personaggio selezionato: " + e.getMessage());
+        System.err.println("Error setting selected character: " + e.getMessage());
+        }
+    }
+
+    private void applyThemeForCharacter(String characterId) {
+        if (mainGameArea == null) return;
+        mainGameArea.getStyleClass().remove("theme-crusader");
+        mainGameArea.getStyleClass().remove("theme-highwayman");
+        mainGameArea.getStyleClass().remove("theme-jester");
+        mainGameArea.getStyleClass().remove("theme-occultist");
+        mainGameArea.getStyleClass().remove("theme-plague-doctor");
+
+        String toAdd = null;
+        if ("CRUSADER".equalsIgnoreCase(characterId)) {
+            toAdd = "theme-crusader";
+        } else if ("HIGHWAYMAN".equalsIgnoreCase(characterId)) {
+            toAdd = "theme-highwayman";
+        } else if ("JESTER".equalsIgnoreCase(characterId)) {
+            toAdd = "theme-jester";
+        } else if ("OCCULTIST".equalsIgnoreCase(characterId)) {
+            toAdd = "theme-occultist";
+        } else if ("PLAGUEDOCTOR".equalsIgnoreCase(characterId) || "PLAGUE_DOCTOR".equalsIgnoreCase(characterId)) {
+            toAdd = "theme-plague-doctor";
+        }
+        if (toAdd != null) {
+            mainGameArea.getStyleClass().add(toAdd);
+            currentTheme = toAdd;
         }
     }
 
@@ -338,7 +399,7 @@ public class GameController {
             .filter(path -> !usedEnemyGlobal.contains(path))
             .collect(Collectors.toList());
         if (available.isEmpty()) {
-            System.err.println("Nessun nemico disponibile nella difficoltà '" + difficultyTier + "' non ancora usato in questa run.");
+        System.err.println("No enemy available in difficulty '" + difficultyTier + "' not yet used in this run.");
             return null;
         }
         String chosenPath = available.get(rng.nextInt(available.size()));
@@ -358,7 +419,7 @@ public class GameController {
                     .collect(Collectors.toList());
             }
         } catch (Exception e) {
-            System.err.println("Impossibile elencare i file nemici per '" + difficultyDir + "': " + e.getMessage());
+        System.err.println("Unable to list enemy files for '" + difficultyDir + "': " + e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -371,23 +432,15 @@ public class GameController {
     }
 
     private void hideGameUIForSelection(boolean hide) {
-        if (levelLabel != null) levelLabel.setVisible(!hide);
-        if (difficultyLabel != null) difficultyLabel.setVisible(!hide);
-        if (menuButton != null) menuButton.setVisible(!hide);
-        if (characterSpriteView != null) characterSpriteView.setVisible(!hide);
-        if (enemySpriteView != null) enemySpriteView.setVisible(!hide);
-        if (sudokuGridContainer != null) sudokuGridContainer.setVisible(!hide);
-        if (livesHBox != null) livesHBox.setVisible(!hide);
-        if (inputControlHBox != null) inputControlHBox.setVisible(!hide);
+        hudManager.hideGameUIForSelection(hide, levelLabel, difficultyLabel, menuButton, characterSpriteView, enemySpriteView, sudokuGridContainer, livesHBox, inputControlHBox, inventorySlotsHBox);
     }
 
     private void updateLevelAndDifficultyUI() {
-        if (levelLabel != null) levelLabel.setText("Livello " + currentLevel);
         String difficulty = gameDataService.getBaseDifficultyByLevel(currentLevel);
         if (difficulty == null || "UNKNOWN".equalsIgnoreCase(difficulty)) {
             difficulty = getDifficultyFallbackByLevel(currentLevel);
         }
-        if (difficultyLabel != null) difficultyLabel.setText(difficulty);
+        hudManager.updateLevelAndDifficultyUI(levelLabel, difficultyLabel, currentLevel, difficulty);
     }
 
     private void spawnEnemyForCurrentLevel() {
@@ -400,9 +453,8 @@ public class GameController {
         }
         String enemySpritePath = pickEnemyForDifficulty(difficulty);
         if (enemySpritePath != null && enemySpriteView != null) {
-            enemySpriteView.setImage(new Image(getClass().getResourceAsStream(enemySpritePath)));
-            enemySpriteView.setVisible(true);
-            enemySpriteView.setScaleX(-1); // Specchia l'immagine del nemico
+            Image img = new Image(getClass().getResourceAsStream(enemySpritePath));
+            enemySpriteManager.applyTo(enemySpriteView, img, enemySpritePath);
         } else if (enemySpriteView != null) {
             enemySpriteView.setVisible(false);
         }
@@ -414,16 +466,19 @@ public class GameController {
         }
         if (currentLevel >= totalLevels) {
             updateSkipButtonState();
-            System.out.println("Run completata: ultimo livello raggiunto.");
+        System.out.println("Run completed: last level reached.");
             return;
         }
+        clearSelectedCell();
+        clearRegionHighlights();
+        clearNumberHighlights();
         currentLevel++;
         updateLevelAndDifficultyUI();
         applyBackgroundForCurrentLevel();
         generateSudokuForCurrentLevel();
         spawnEnemyForCurrentLevel();
         updateSkipButtonState();
-        System.out.println("Livello " + currentLevel + " avviato (skip).");
+        System.out.println("Level " + currentLevel + " started (skip).");
     }
 
     private void applyBackgroundForCurrentLevel() {
@@ -433,10 +488,10 @@ public class GameController {
             if (img != null && backgroundImageView != null) {
                 backgroundImageView.setImage(img);
             } else {
-                System.err.println("Background non disponibile per livello " + currentLevel + ".");
+        System.err.println("Background not available for level " + currentLevel + ".");
             }
         } catch (Exception e) {
-            System.err.println("Errore nell'applicazione del background: " + e.getMessage());
+        System.err.println("Error applying background: " + e.getMessage());
         }
     }
 
@@ -448,10 +503,15 @@ public class GameController {
     }
 
     private void generateSudokuForCurrentLevel() {
+        clearSelectedCell();
+        clearRegionHighlights();
+        clearNumberHighlights();
         RunFrozenBuffs frozen = new RunFrozenBuffs(Collections.emptyMap());
         SudokuGrid puzzle = sudokuGenerator.generateNewPuzzle(currentLevel, frozen);
         sudokuEngine = new model.engine.SudokuEngine(puzzle);
         applyPuzzleToUI(puzzle);
+        clearRegionHighlights();
+        clearNumberHighlights();
     }
 
     private void applyPuzzleToUI(SudokuGrid puzzle) {
@@ -462,45 +522,320 @@ public class GameController {
                 if (v != 0) {
                     cellLabels[r][c].setText(String.valueOf(v));
                     cellLabels[r][c].setVisible(true);
+                    cellLabels[r][c].getStyleClass().remove("user-number-error");
+                    cellLabels[r][c].getStyleClass().remove("user-number-correct");
+                    if (!cellLabels[r][c].getStyleClass().contains("initial-number")) {
+                        cellLabels[r][c].getStyleClass().add("initial-number");
+                    }
                     if (noteGrids[r][c] != null) noteGrids[r][c].setVisible(false);
                 } else {
                     cellLabels[r][c].setText("");
                     cellLabels[r][c].setVisible(false);
+                    cellLabels[r][c].getStyleClass().remove("initial-number");
+                    cellLabels[r][c].getStyleClass().remove("user-number-error");
+                    cellLabels[r][c].getStyleClass().remove("user-number-correct");
                     if (noteGrids[r][c] != null) noteGrids[r][c].setVisible(false);
                 }
             }
         }
+        refreshNumberButtonsAvailability();
     }
 
     private void handleNumberInput(int value) {
-        if (selectedRow != -1 && selectedCol != -1 && sudokuEngine != null) {
-            boolean ok = sudokuEngine.insertValue(selectedRow, selectedCol, value);
-            if (ok) {
-                cellLabels[selectedRow][selectedCol].setText(String.valueOf(value));
-                cellLabels[selectedRow][selectedCol].setVisible(true);
-                if (noteGrids[selectedRow][selectedCol] != null) noteGrids[selectedRow][selectedCol].setVisible(false);
-                if (sudokuEngine.checkWin()) {
-                    System.out.println("Sudoku completato!");
+        if (sudokuEngine == null) return;
+
+        if (selectedRow == -1 || selectedCol == -1) {
+            highlightMatchingNumbersStrong(value);
+            return;
+        }
+
+        Label currentLbl = cellLabels[selectedRow][selectedCol];
+        if (currentLbl != null && currentLbl.isVisible()) {
+            String ct = currentLbl.getText();
+            if (ct != null && !ct.isEmpty()) {
+                if (selectedCellVBox != null) {
+                    selectedCellVBox.getStyleClass().remove("selected-cell");
+                    if (!selectedCellVBox.getStyleClass().contains("unselected-cell")) {
+                        selectedCellVBox.getStyleClass().add("unselected-cell");
+                    }
                 }
-            } else {
-                System.out.println("Valore errato o cella bloccata.");
+                clearRegionHighlights();
+                clearNumberHighlights();
+                highlightMatchingNumbersStrong(value);
+                return;
             }
         }
+
+        if (noteModeActive) {
+            if (!sudokuEngine.isInitialCell(selectedRow, selectedCol) && sudokuEngine.getCellValue(selectedRow, selectedCol) == 0) {
+                sudokuEngine.clearNotes(selectedRow, selectedCol);
+                sudokuEngine.toggleNote(selectedRow, selectedCol, value);
+                GridPane ng = noteGrids[selectedRow][selectedCol];
+                if (ng != null) {
+                    ng.setVisible(true);
+                    for (int k = 0; k < GRID_SIZE; k++) {
+                        if (noteLabels[selectedRow][selectedCol][k] != null) {
+                            noteLabels[selectedRow][selectedCol][k].setVisible(k == 2);
+                        }
+                    }
+                    noteLabels[selectedRow][selectedCol][2].setText(String.valueOf(value));
+                }
+                Label lbl = cellLabels[selectedRow][selectedCol];
+                if (lbl != null) {
+                    lbl.setText("");
+                    lbl.setVisible(false);
+                    lbl.getStyleClass().remove("user-number-error");
+                    lbl.getStyleClass().remove("user-number-correct");
+                }
+                refreshNumberButtonsAvailability();
+            }
+            return;
+        }
+
+        boolean ok = sudokuEngine.insertValue(selectedRow, selectedCol, value);
+        Label lbl = cellLabels[selectedRow][selectedCol];
+        if (ok) {
+            if (lbl != null) {
+                lbl.setText(String.valueOf(value));
+                lbl.setVisible(true);
+                lbl.getStyleClass().remove("initial-number");
+                lbl.getStyleClass().remove("user-number-error");
+                if (!lbl.getStyleClass().contains("user-number-correct")) {
+                    lbl.getStyleClass().add("user-number-correct");
+                }
+            }
+            GridPane ng = noteGrids[selectedRow][selectedCol];
+            if (ng != null) ng.setVisible(false);
+            clearNumberHighlights();
+            clearRegionHighlights();
+            applyRegionHighlights(selectedRow, selectedCol);
+            highlightMatchingNumbersStrong(value);
+            if (sudokuEngine.checkWin()) {
+                boolean isBoss = gameDataService.isBossLevel(currentLevel);
+                if (isBoss) {
+                    completeLevelAndAdvance();
+                } else {
+                    hideGameUIForSelection(true);
+                    showItemSelectionModal();
+                }
+            }
+        } else {
+            if (!sudokuEngine.isInitialCell(selectedRow, selectedCol)) {
+                if (lbl != null) {
+                    lbl.setText(String.valueOf(value));
+                    lbl.setVisible(true);
+                    lbl.getStyleClass().remove("initial-number");
+                    lbl.getStyleClass().remove("user-number-correct");
+                    if (!lbl.getStyleClass().contains("user-number-error")) {
+                        lbl.getStyleClass().add("user-number-error");
+                    }
+                }
+                GridPane ng = noteGrids[selectedRow][selectedCol];
+                if (ng != null) ng.setVisible(false);
+                clearNumberHighlights();
+                clearRegionHighlights();
+                applyRegionHighlights(selectedRow, selectedCol);
+                highlightMatchingNumbersStrong(value);
+            }
+            handleUserError();
+        }
+        refreshNumberButtonsAvailability();
     }
 
     private void applyCustomCursor() {
-        try {
-            Image img = new Image(getClass().getResourceAsStream("/assets/icons/cursor/arrow.png"));
-            javafx.scene.ImageCursor cursor = new javafx.scene.ImageCursor(img);
-            if (mainGameArea.getScene() != null) {
-                mainGameArea.getScene().setCursor(cursor);
+        cursorManager.apply(mainGameArea);
+    }
+
+    private LivesUIManager livesUIManager;
+    private InventorySlotsUIManager inventorySlotsUIManager;
+    private ItemUseManager itemUseManager;
+
+    private void initializeInventoryInteraction() {
+        if (inventorySlotsUIManager == null) return;
+        itemUseManager = new ItemUseManager(
+                () -> sudokuEngine,
+                livesUIManager,
+                inventorySlotsUIManager,
+                runService,
+                gameDataService,
+                () -> currentLevel,
+                () -> selectedRow,
+                () -> selectedCol,
+                () -> initialMaxLives,
+                cellLabels,
+                noteGrids,
+                () -> { clearNumberHighlights(); clearRegionHighlights(); refreshNumberButtonsAvailability(); },
+                (r, c) -> applyRegionHighlights(r, c),
+                (value) -> highlightMatchingNumbersStrong(value),
+                this::clearSelectedCell,
+                () -> completeLevelAndAdvance(),
+                () -> { hideGameUIForSelection(true); showItemSelectionModal(); }
+        );
+        inventorySlotsUIManager.setOnItemClicked(itemUseManager::handleItemClick);
+    }
+
+    
+
+    private void handleUserError() {
+        if (firstErrorProtectionActive && !firstErrorProtectionUsed) {
+            firstErrorProtectionUsed = true;
+        System.out.println("First error protection active: no life lost.");
+            return;
+        }
+        if (livesUIManager != null && livesUIManager.getLives() > 0) {
+            livesUIManager.loseLifeWithAnimation();
+            if (livesUIManager.getLives() <= 0) {
+                hideGameUIForSelection(true);
+                endGameManager.showDefeat(modalContainer);
             }
-        } catch (Exception e) {
-            System.err.println("Impossibile impostare il cursore custom: " + e.getMessage());
         }
     }
 
-    public void updateSudokuView() {
 
+    private void refreshNumberButtonsAvailability() {
+        int[] counts = new int[10];
+        for (int r = 0; r < GRID_SIZE; r++) {
+            for (int c = 0; c < GRID_SIZE; c++) {
+                if (cellLabels[r][c].isVisible()) {
+                    String t = cellLabels[r][c].getText();
+                    if (t != null && !t.isEmpty()) {
+                        try {
+                            int v = Integer.parseInt(t);
+                            if (v >= 1 && v <= 9) counts[v]++;
+                        } catch (NumberFormatException ignore) { }
+                    }
+                }
+            }
+        }
+        for (int i = 1; i <= 9; i++) {
+            boolean enabled = counts[i] < 9;
+            gameInputManager.setNumberEnabled(i, enabled);
+        }
     }
+
+    private void clearNumberHighlights() {
+        for (int r = 0; r < GRID_SIZE; r++) {
+            for (int c = 0; c < GRID_SIZE; c++) {
+                VBox cell = sudokuCells[r][c];
+                if (cell != null) {
+                    cell.getStyleClass().remove("number-highlight");
+                    cell.getStyleClass().remove("match-number-strong");
+                }
+            }
+        }
+        lastHighlightedNumber = null;
+    }
+
+    @SuppressWarnings("unused")
+    private void highlightNumbers(int value) {
+        clearNumberHighlights();
+
+        for (int r = 0; r < GRID_SIZE; r++) {
+            for (int c = 0; c < GRID_SIZE; c++) {
+                Label lbl = cellLabels[r][c];
+                if (lbl != null && lbl.isVisible()) {
+                    String t = lbl.getText();
+                    if (t != null && !t.isEmpty()) {
+                        try {
+                            int v = Integer.parseInt(t);
+                            if (v == value) {
+                                VBox cell = sudokuCells[r][c];
+                                if (cell != null && !cell.getStyleClass().contains("number-highlight")) {
+                                    cell.getStyleClass().add("number-highlight");
+                                }
+                            }
+                        } catch (NumberFormatException ignore) { }
+                    }
+                }
+            }
+        }
+        lastHighlightedNumber = value;
+    }
+
+    private void highlightMatchingNumbersStrong(int value) {
+        clearNumberHighlights();
+        for (int r = 0; r < GRID_SIZE; r++) {
+            for (int c = 0; c < GRID_SIZE; c++) {
+                Label lbl = cellLabels[r][c];
+                if (lbl != null && lbl.isVisible()) {
+                    String t = lbl.getText();
+                    if (t != null && !t.isEmpty()) {
+                        try {
+                            int v = Integer.parseInt(t);
+                            if (v == value) {
+                                VBox cell = sudokuCells[r][c];
+                                if (cell != null && !cell.getStyleClass().contains("match-number-strong")) {
+                                    cell.getStyleClass().add("match-number-strong");
+                                }
+                            }
+                        } catch (NumberFormatException ignore) { }
+                    }
+                }
+            }
+        }
+        lastHighlightedNumber = value;
+    }
+
+    private void clearRegionHighlights() {
+        for (int r = 0; r < GRID_SIZE; r++) {
+            for (int c = 0; c < GRID_SIZE; c++) {
+                VBox cell = sudokuCells[r][c];
+                if (cell != null) {
+                    cell.getStyleClass().remove("peer-highlight");
+                }
+            }
+        }
+    }
+
+    private void applyRegionHighlights(int r, int c) {
+        for (int cc = 0; cc < GRID_SIZE; cc++) {
+            if (cc == c) continue;
+            VBox cell = sudokuCells[r][cc];
+            if (cell != null && !cell.getStyleClass().contains("peer-highlight")) {
+                cell.getStyleClass().add("peer-highlight");
+            }
+        }
+        for (int rr = 0; rr < GRID_SIZE; rr++) {
+            if (rr == r) continue;
+            VBox cell = sudokuCells[rr][c];
+            if (cell != null && !cell.getStyleClass().contains("peer-highlight")) {
+                cell.getStyleClass().add("peer-highlight");
+            }
+        }
+        int boxStartR = (r / 3) * 3;
+        int boxStartC = (c / 3) * 3;
+        for (int rr = boxStartR; rr < boxStartR + 3; rr++) {
+            for (int cc = boxStartC; cc < boxStartC + 3; cc++) {
+                if (rr == r && cc == c) continue;
+                VBox cell = sudokuCells[rr][cc];
+                if (cell != null && !cell.getStyleClass().contains("peer-highlight")) {
+                    cell.getStyleClass().add("peer-highlight");
+                }
+            }
+        }
+    }
+
+    private void clearSelectedCell() {
+        if (selectedCellVBox != null) {
+            selectedCellVBox.getStyleClass().remove("selected-cell");
+            if (!selectedCellVBox.getStyleClass().contains("unselected-cell")) {
+                selectedCellVBox.getStyleClass().add("unselected-cell");
+            }
+            selectedCellVBox = null;
+        }
+        selectedRow = -1;
+        selectedCol = -1;
+    }
+
+    private boolean isDescendantOf(Node node, Node ancestor) {
+        if (node == null || ancestor == null) return false;
+        Node cur = node;
+        while (cur != null) {
+            if (cur == ancestor) return true;
+            cur = cur.getParent();
+        }
+        return false;
+    }
+
+
 }

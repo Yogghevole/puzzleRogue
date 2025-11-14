@@ -6,6 +6,10 @@ import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import view.controller.GameController;
+import model.service.RunService;
+import model.dao.RunDAO;
+import model.service.GameDataService;
+import model.service.SudokuGenerator;
 import java.io.IOException;
 import model.db.DatabaseManager;
 
@@ -24,8 +28,13 @@ public class Main extends Application {
 
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/GameView.fxml"));
             BorderPane root = loader.load();
-            
+
             GameController controller = loader.getController();
+            GameDataService gameDataService = new GameDataService(DatabaseManager.getInstance());
+            RunDAO runDAO = new RunDAO(DatabaseManager.getInstance());
+            SudokuGenerator sudokuGenerator = new SudokuGenerator(gameDataService);
+            RunService runService = new RunService(runDAO, gameDataService, sudokuGenerator);
+            controller.setRunService(runService);
 
             Scene scene = new Scene(root, WIDTH, HEIGHT);
             
@@ -39,7 +48,7 @@ public class Main extends Application {
             primaryStage.show();
             
         } catch (IOException e) {
-            System.err.println("Impossibile caricare GameView.fxml o le sue risorse.");
+            System.err.println("Unable to load GameView.fxml or its resources.");
             e.printStackTrace();
             throw e;
         }

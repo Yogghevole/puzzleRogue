@@ -42,10 +42,10 @@ public class BackgroundManager {
                     loaded++;
                 }
             }
-            LOG.log(Level.INFO, "Background preload completato: {0} immagini (levels={1}, boss={2})",
+            LOG.log(Level.INFO, "Background preload completed: {0} images (levels={1}, boss={2})",
                     new Object[]{loaded, cacheLevels.size(), cacheBoss.size()});
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Errore nel precaricamento dei background: {0}", e.getMessage());
+            LOG.log(Level.SEVERE, "Error preloading backgrounds: {0}", e.getMessage());
         }
     }
 
@@ -57,7 +57,7 @@ public class BackgroundManager {
         List<String> available = all.stream().filter(p -> !used.contains(p)).collect(Collectors.toList());
 
         if (available.isEmpty()) {
-            LOG.log(Level.SEVERE, "Pool di background esaurito ({0}). Fallback alla selezione con possibili ripetizioni.", boss ? "boss" : "levels");
+            LOG.log(Level.SEVERE, "Background pool exhausted ({0}). Fallback to selection with possible repeats.", boss ? "boss" : "levels");
             if (all.isEmpty()) return null;
             String pick = all.get(rng.nextInt(all.size()));
             return cache.get(pick);
@@ -71,13 +71,13 @@ public class BackgroundManager {
     public void resetRun() {
         usedLevels.clear();
         usedBoss.clear();
-        LOG.log(Level.INFO, "BackgroundManager reset: pool usati azzerati");
+        LOG.log(Level.INFO, "BackgroundManager reset: used pool cleared");
     }
 
     public void clearCache() {
         cacheLevels.clear();
         cacheBoss.clear();
-        LOG.log(Level.INFO, "BackgroundManager cache svuotata");
+        LOG.log(Level.INFO, "BackgroundManager cache cleared");
     }
 
     private List<String> listBackgroundFiles(String basePath) {
@@ -91,7 +91,7 @@ public class BackgroundManager {
                         .collect(Collectors.toList());
             }
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Errore nel listare {0}: {1}", new Object[]{basePath, e.getMessage()});
+            LOG.log(Level.SEVERE, "Error listing {0}: {1}", new Object[]{basePath, e.getMessage()});
             return Collections.emptyList();
         }
     }
