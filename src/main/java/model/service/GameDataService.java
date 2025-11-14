@@ -8,9 +8,6 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Servizio per accedere ai dati statici di configurazione del gioco .
- */
 public class GameDataService {
 
     private final DatabaseManager dbManager;
@@ -128,5 +125,64 @@ public class GameDataService {
             System.err.println("Errore SQL nel recupero livello massimo buff " + buffId + ": " + e.getMessage());
         }
         return 0;
+    }
+    
+    public boolean hasActiveRun() {
+        String sql = "SELECT COUNT(*) as count FROM Run";
+        
+        try (Connection conn = dbManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                return rs.getInt("count") > 0;
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore SQL nel controllo run attiva: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    public int getActiveRunId() {
+        String sql = "SELECT run_id FROM Run LIMIT 1";
+        
+        try (Connection conn = dbManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                return rs.getInt("run_id");
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore SQL nel recupero ID run attiva: " + e.getMessage());
+        }
+        return -1;
+    }
+    
+    public Map<String, Object> getActiveRunInfo() {
+        String sql = "SELECT run_id, character_selected, current_level, lives_remaining " +
+                     "FROM Run r LEFT JOIN Run_Level_State ls ON r.run_id = ls.run_id " +
+                     "LIMIT 1";
+        
+        try (Connection conn = dbManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                Map<String, Object> runInfo = new HashMap<>();
+                runInfo.put("run_id", rs.getInt("run_id"));
+                runInfo.put("character_id", rs.getString("character_selected"));
+                runInfo.put("current_level", rs.getInt("current_level"));
+                runInfo.put("current_lives", rs.getInt("lives_remaining"));
+                return runInfo;
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore SQL nel recupero info run attiva: " + e.getMessage());
+        }
+        return null;
+    }
+    
+    public GameDataService() {
+        this.dbManager = DatabaseManager.getInstance();
     }
 }

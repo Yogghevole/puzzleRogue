@@ -4,9 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-/**
- * Rappresenta l'entità utente e il suo stato permanente (punti, statistiche, buff permanenti sbloccati).
- */
 public class User {
 
     private String nick;
@@ -35,7 +32,11 @@ public class User {
     public String getNick() {
         return nick;
     }
-
+    
+    public void setNick(String nick) {
+        this.nick = nick;
+    }
+    
     public Integer getCurrentRunId() {
         return currentRunId;
     }
@@ -68,6 +69,10 @@ public class User {
     public void incrementRunsCompleted() {
         this.runsCompleted++;
     }
+    
+    public void setRunsCompleted(int runsCompleted) {
+        this.runsCompleted = runsCompleted;
+    }
 
     public int getRunsWon() {
         return runsWon;
@@ -75,6 +80,10 @@ public class User {
 
     public void incrementRunsWon() {
         this.runsWon++;
+    }
+    
+    public void setRunsWon(int runsWon) {
+        this.runsWon = runsWon;
     }
 
     public Map<String, Integer> getPermanentBuffLevels() {

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icona Settings stile materiale -->
+  <g transform="translate(8, 8)">
+    <!-- Corona dell'ingranaggio -->
+    <path d="M12 1L13.09 4.26L16.18 4.77L14.5 7.5L15.6 10.76L12 9.5L8.4 10.76L9.5 7.5L7.82 4.77L10.91 4.26L12 1Z" 
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="2" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+    
+    <!-- Centro dell'ingranaggio -->
+    <circle cx="12" cy="7" r="3" 
+            fill="none" 
+            stroke="#FFFFFF" 
+            stroke-width="2"/>
+    
+    <!-- Dettagli aggiuntivi per rendere più evidente -->
+    <circle cx="12" cy="7" r="1" 
+            fill="#FFFFFF"/>
+  </g>
+</svg>

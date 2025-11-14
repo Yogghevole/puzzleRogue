@@ -1,12 +1,19 @@
 package model.service;
 
 import model.dao.RunDAO;
+import model.db.DatabaseManager;
 import model.domain.Run;
 import model.domain.RunFrozenBuffs;
 import model.domain.RunLevelState;
 import model.domain.SudokuGrid;
 import model.domain.User;
 import model.engine.SudokuEngine;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,6 +26,7 @@ public class RunService {
     private final RunDAO runDAO;
     private final GameDataService gameDataService;
     private final SudokuGenerator sudokuGenerator;
+    private final DatabaseManager dbManager;
     private Run currentRun;
     private SudokuEngine currentEngine;
     private RunFrozenBuffs frozenBuffs; 
@@ -27,6 +35,15 @@ public class RunService {
         this.runDAO = runDAO;
         this.gameDataService = gameDataService;
         this.sudokuGenerator = sudokuGenerator;
+        this.dbManager = DatabaseManager.getInstance();
+        this.frozenBuffs = new RunFrozenBuffs(Collections.emptyMap());
+    }
+    
+    public RunService() {
+        this.dbManager = DatabaseManager.getInstance();
+        this.runDAO = new RunDAO(dbManager);
+        this.gameDataService = new GameDataService();
+        this.sudokuGenerator = new SudokuGenerator(gameDataService);
         this.frozenBuffs = new RunFrozenBuffs(Collections.emptyMap());
     }
 
@@ -121,7 +138,7 @@ public class RunService {
                 if (currentRun.getLivesRemaining() > 1) {
                     currentRun.loseLife();
                     success = currentEngine.revealHint().isPresent() && 
-                             currentEngine.revealHint().isPresent(); // Two hints
+                             currentEngine.revealHint().isPresent();
                 }
                 break;
                     
@@ -197,6 +214,97 @@ public class RunService {
         
         currentRun = null;
         currentEngine = null;
+    }
+    
+    public boolean startNewRun() {
+        try {
+            if (gameDataService.hasActiveRun()) {
+                System.out.println("Esiste già una run attiva. Impossibile crearne una nuova.");
+                return false;
+            }
+            
+            User currentUser = getCurrentUser();
+            if (currentUser == null) {
+                System.err.println("Nessun utente trovato. Creazione run fallita.");
+                return false;
+            }
+            
+            String sql = "INSERT INTO Run (user_nick, character_selected, lives_remaining, total_errors, score, is_completed) " +
+                        "VALUES (?, ?, ?, ?, ?, ?)";
+            
+            try (Connection conn = dbManager.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                
+                stmt.setString(1, currentUser.getNick());
+                stmt.setString(2, "DEFAULT");
+                stmt.setInt(3, 3);
+                stmt.setInt(4, 0);
+                stmt.setInt(5, 0);
+                stmt.setBoolean(6, false);
+                
+                int affectedRows = stmt.executeUpdate();
+                
+                if (affectedRows > 0) {
+                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                        if (generatedKeys.next()) {
+                            int newRunId = generatedKeys.getInt(1);
+                            System.out.println("Nuova run creata con ID: " + newRunId);
+                            return true;
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore SQL nella creazione di una nuova run: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return false;
+    }
+    
+    public boolean resumeLastRun() {
+        if (!gameDataService.hasActiveRun()) {
+            System.out.println("Nessuna run attiva da riprendere.");
+            return false;
+        }
+        
+        var runInfo = gameDataService.getActiveRunInfo();
+        if (runInfo == null) {
+            System.err.println("Impossibile recuperare le informazioni della run attiva.");
+            return false;
+        }
+        
+        System.out.println("Ripresa run ID: " + runInfo.get("run_id") + 
+                          " - Livello: " + runInfo.get("current_level") + 
+                          " - Personaggio: " + runInfo.get("character_id"));
+        
+        return true;
+    }
+    
+    private User getCurrentUser() {
+        String sql = "SELECT * FROM User LIMIT 1";
+        
+        try (Connection conn = dbManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                User user = new User(
+                    rs.getString("nick"),
+                    rs.getObject("current_run_id", Integer.class),
+                    rs.getInt("points_available"),
+                    rs.getInt("points_total"),
+                    rs.getInt("runs_completed"),
+                    rs.getInt("runs_won"),
+                    null
+                );
+                return user;
+            }
+        } catch (SQLException e) {
+            System.err.println("Errore SQL nel recupero dell'utente: " + e.getMessage());
+        }
+        
+        return null;
     }
     
     private RunFrozenBuffs freezeBuffs(User user) {

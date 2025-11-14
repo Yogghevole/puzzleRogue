@@ -402,7 +402,7 @@ public class GameController {
         if (enemySpritePath != null && enemySpriteView != null) {
             enemySpriteView.setImage(new Image(getClass().getResourceAsStream(enemySpritePath)));
             enemySpriteView.setVisible(true);
-            enemySpriteView.setScaleX(-1); // Specchia l'immagine del nemico
+            enemySpriteView.setScaleX(-1);
         } else if (enemySpriteView != null) {
             enemySpriteView.setVisible(false);
         }

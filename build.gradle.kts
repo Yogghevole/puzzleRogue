@@ -31,6 +31,12 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
 application {
     mainClass.set("app.Main")
 }

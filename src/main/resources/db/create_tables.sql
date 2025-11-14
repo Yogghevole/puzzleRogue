@@ -107,43 +107,5 @@ CREATE TABLE IF NOT EXISTS Character_Definition (
 CREATE TABLE IF NOT EXISTS Level_Definition (
     level_number INTEGER PRIMARY KEY,
     base_difficulty TEXT NOT NULL,
-    is_boss_level BOOLEAN DEFAULT FALSE,
-);
-
--- Runs table to store active and completed runs
-CREATE TABLE IF NOT EXISTS runs (
-    id SERIAL PRIMARY KEY,
-    user_nick VARCHAR(50) NOT NULL,
-    character_id VARCHAR(50) NOT NULL,
-    lives_remaining INTEGER NOT NULL,
-    total_errors INTEGER DEFAULT 0,
-    score INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_nick) REFERENCES users(nick),
-    UNIQUE (user_nick, is_active)
-);
-
--- Run level states table to store the current level progress
-CREATE TABLE IF NOT EXISTS run_level_states (
-    run_id INTEGER PRIMARY KEY,
-    current_level INTEGER NOT NULL,
-    enemy_id VARCHAR(50) NOT NULL,
-    protection_used BOOLEAN DEFAULT false,
-    errors_in_level INTEGER DEFAULT 0,
-    puzzle_state TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (run_id) REFERENCES runs(id)
-);
-
--- Run inventory table to store items
-CREATE TABLE IF NOT EXISTS run_inventory (
-    run_id INTEGER NOT NULL,
-    item_id VARCHAR(50) NOT NULL,
-    quantity INTEGER NOT NULL DEFAULT 1,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (run_id, item_id),
-    FOREIGN KEY (run_id) REFERENCES runs(id)
+    is_boss_level BOOLEAN DEFAULT FALSE
 );

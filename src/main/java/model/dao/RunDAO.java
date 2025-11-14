@@ -18,13 +18,12 @@ public class RunDAO {
     public void save(Run run) {
         String sql = """
             INSERT INTO Run (run_id, user_nick, character_selected, lives_remaining, 
-                            total_errors, score, is_completed)
-            VALUES (?, ?, ?, ?, ?, ?, false)
+                            total_errors, score)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET 
                 lives_remaining = ?,
                 total_errors = ?,
-                score = ?,
-                is_completed = ?
+                score = ?
         """;
 
         try (Connection conn = dbManager.getConnection();
@@ -39,7 +38,6 @@ public class RunDAO {
             stmt.setInt(7, run.getLivesRemaining());
             stmt.setInt(8, run.getTotalErrors());
             stmt.setInt(9, run.getScore());
-            stmt.setBoolean(10, false);
 
             stmt.executeUpdate();
             
@@ -132,7 +130,7 @@ public class RunDAO {
             FROM Run r
             LEFT JOIN Run_Level_State ls ON r.run_id = ls.run_id
             LEFT JOIN Run_Inventory i ON r.run_id = i.run_id
-            WHERE r.user_nick = ? AND NOT r.is_completed
+            WHERE r.user_nick = ?
         """;
 
         try (Connection conn = dbManager.getConnection();
@@ -191,8 +189,8 @@ public class RunDAO {
             rs.getInt("current_level"),
             rs.getString("enemy_sprite_id"),
             rs.getString("difficulty_tier"),
-            rs.getString("initial_grid"),
-            rs.getString("user_grid"),
+            rs.getString("initial_grid_data"),
+            rs.getString("user_grid_data"),
             rs.getString("notes_data"),
             rs.getInt("errors_in_level"),
             rs.getBoolean("protection_used")
