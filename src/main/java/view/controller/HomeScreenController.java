@@ -18,6 +18,7 @@ public class HomeScreenController {
     @FXML private Button newExpeditionButton;
     @FXML private Button reliquaryButton;
     @FXML private ImageView settingsIcon;
+    @FXML private StackPane optionsModalContainer;
     
     private GameDataService gameDataService;
     private RunService runService;
@@ -91,7 +92,12 @@ public class HomeScreenController {
     }
     private boolean resumeLastRun() {
         try {
-            return gameDataService.hasActiveRun();
+            if (runService == null) runService = new RunService();
+            boolean ok = runService.resumeLastRun();
+            if (ok && runService.getCurrentRun() != null && runService.getCurrentRun().getCurrentLevelState() == null) {
+                runService.startLevel(1);
+            }
+            return ok;
         } catch (Exception e) {
             System.err.println("Errore nel controllo run attiva: " + e.getMessage());
             return false;
@@ -108,18 +114,72 @@ public class HomeScreenController {
     }
     
     private void navigateToReliquary() {
-        System.out.println("Navigazione verso il Reliquiario...");
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/AncestorsLegacy.fxml"));
+            javafx.scene.Parent root = loader.load();
+            Stage stage = (Stage) mainContainer.getScene().getWindow();
+            stage.setScene(new javafx.scene.Scene(root, stage.getWidth(), stage.getHeight()));
+            stage.show();
+        } catch (Exception e) {
+            System.err.println("Errore apertura Legacy: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     private void showSettingsMenu() {
-        System.out.println("Apertura menu impostazioni...");
+        try {
+            optionsModalContainer.getChildren().clear();
+            optionsModalContainer.setVisible(true);
+            AnchorPane panel = new AnchorPane();
+            panel.setPrefSize(mainContainer.getWidth(), mainContainer.getHeight());
+            javafx.scene.image.Image bg = new javafx.scene.image.Image(getClass().getResourceAsStream("/assets/icons/help/help.background.png"));
+            javafx.scene.image.ImageView bgView = new javafx.scene.image.ImageView(bg);
+            bgView.setFitWidth(mainContainer.getWidth());
+            bgView.setFitHeight(mainContainer.getHeight());
+            bgView.setPreserveRatio(false);
+            panel.getChildren().add(bgView);
+
+            Button closeButton = new Button("X");
+            closeButton.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-size: 16; -fx-background-radius: 16;");
+            AnchorPane.setTopAnchor(closeButton, 20.0);
+            AnchorPane.setRightAnchor(closeButton, 20.0);
+            closeButton.setOnAction(e -> { optionsModalContainer.setVisible(false); optionsModalContainer.getChildren().clear(); });
+            panel.getChildren().add(closeButton);
+
+            VBox content = new VBox(12.0);
+            content.setAlignment(javafx.geometry.Pos.CENTER);
+            Button logoutBtn = new Button("Esci dall'account");
+            Button quitBtn = new Button("Esci dal gioco");
+            logoutBtn.setOnAction(e -> { optionsModalContainer.setVisible(false); optionsModalContainer.getChildren().clear(); handleLogout(); });
+            quitBtn.setOnAction(e -> handleQuit());
+            content.getChildren().addAll(logoutBtn, quitBtn);
+            AnchorPane.setTopAnchor(content, 0.0);
+            AnchorPane.setBottomAnchor(content, 0.0);
+            AnchorPane.setLeftAnchor(content, 0.0);
+            AnchorPane.setRightAnchor(content, 0.0);
+            panel.getChildren().add(content);
+
+            optionsModalContainer.getChildren().add(panel);
+        } catch (Exception ex) {
+            System.err.println("Errore apertura menu impostazioni: " + ex.getMessage());
+        }
     }
 
     private void handleContinueExpedition() {
-        System.out.println("Ripresa spedizione in corso...");
+        String lastChar = model.service.SessionService.getLastSelectedCharacter();
+        if (lastChar != null && !lastChar.isEmpty()) {
+            if (runService == null) runService = new RunService();
+            boolean ok = runService.startNewRunWithCharacter(lastChar);
+            if (ok) {
+                navigateToGameView();
+                return;
+            }
+        }
         boolean success = resumeLastRun();
         if (success) {
             navigateToGameScreen();
+        } else {
+            navigateToCharacterSelection();
         }
     }
     
@@ -154,14 +214,15 @@ public class HomeScreenController {
     
     private void navigateToGameScreen() {
         try {
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
-                getClass().getResource("/view/GameView.fxml")
-            );
-            javafx.scene.Parent root = loader.load();
-            
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/GameView.fxml"));
+            javafx.scene.layout.BorderPane gameRoot = loader.load();
+            GameController gameController = loader.getController();
+            gameController.setRunService(runService);
             Stage stage = (Stage) mainContainer.getScene().getWindow();
-            stage.setScene(new javafx.scene.Scene(root));
-            stage.show();
+            Scene gameScene = new Scene(gameRoot, stage.getWidth(), stage.getHeight());
+            String cssPath = getClass().getResource("/style.css").toExternalForm();
+            gameScene.getStylesheets().add(cssPath);
+            stage.setScene(gameScene);
         } catch (Exception e) {
             System.err.println("Errore nella navigazione al gioco: " + e.getMessage());
             e.printStackTrace();
@@ -190,5 +251,23 @@ public class HomeScreenController {
     
     private void showAlert(String title, String message) {
         System.out.println(title + ": " + message);
+    }
+
+    private void handleLogout() {
+        try {
+            model.service.SessionService.clear();
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/Nickname.fxml"));
+            javafx.scene.Parent root = loader.load();
+            Stage stage = (Stage) mainContainer.getScene().getWindow();
+            stage.setScene(new javafx.scene.Scene(root, stage.getWidth(), stage.getHeight()));
+            stage.show();
+        } catch (Exception e) {
+            System.err.println("Errore nel logout: " + e.getMessage());
+        }
+    }
+
+    private void handleQuit() {
+        Stage stage = (Stage) mainContainer.getScene().getWindow();
+        stage.close();
     }
 }

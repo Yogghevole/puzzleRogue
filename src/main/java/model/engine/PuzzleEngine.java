@@ -8,8 +8,6 @@ import java.util.Set;
  */
 public interface PuzzleEngine {
 
-    // --- Operazioni Base ---
-
     boolean insertValue(int row, int col, int value);
 
     boolean isCorrect(int row, int col, int value);
@@ -17,8 +15,6 @@ public interface PuzzleEngine {
     void clearCell(int row, int col);
 
     boolean checkWin();
-    
-    // --- Operazioni Note ---
 
     void toggleNote(int row, int col, int candidate);
 
@@ -26,8 +22,6 @@ public interface PuzzleEngine {
 
     void removeCandidateFromPeers(int row, int col, int value);
 
-    // --- Operazioni Oggetti/Buff ---
-    
     Optional<int[]> revealHint();
     
     int getCellValue(int row, int col);

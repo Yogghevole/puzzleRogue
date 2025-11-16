@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:id="rootPane" fx:controller="view.controller.NicknameController" prefWidth="800.0" prefHeight="600.0">
+    <children>
+        <VBox alignment="CENTER" spacing="12.0" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+            <Label text="Enter Nickname" />
+            <TextField fx:id="nickField" promptText="Nickname" prefWidth="300.0" />
+            <Button fx:id="continueButton" text="Continua" styleClass="menu-button" />
+        </VBox>
+    </children>
+    
+</AnchorPane>

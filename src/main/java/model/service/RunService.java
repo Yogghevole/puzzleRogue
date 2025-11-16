@@ -58,6 +58,12 @@ public class RunService {
         return startLevel(1);
     }
 
+    public boolean startNewRunWithCharacter(String characterId) {
+        User currentUser = getCurrentUser();
+        if (currentUser == null || characterId == null || characterId.isEmpty()) return false;
+        return startNewRun(currentUser, characterId);
+    }
+
     public boolean startLevel(int levelNumber) {
         if (currentRun == null) return false;
         
@@ -218,93 +224,51 @@ public class RunService {
     
     public boolean startNewRun() {
         try {
-            if (gameDataService.hasActiveRun()) {
-                System.out.println("Esiste già una run attiva. Impossibile crearne una nuova.");
-                return false;
-            }
-            
             User currentUser = getCurrentUser();
             if (currentUser == null) {
-                System.err.println("Nessun utente trovato. Creazione run fallita.");
                 return false;
             }
-            
-            String sql = "INSERT INTO Run (user_nick, character_selected, lives_remaining, total_errors, score, is_completed) " +
-                        "VALUES (?, ?, ?, ?, ?, ?)";
-            
-            try (Connection conn = dbManager.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
-                
-                stmt.setString(1, currentUser.getNick());
-                stmt.setString(2, "DEFAULT");
-                stmt.setInt(3, 3);
-                stmt.setInt(4, 0);
-                stmt.setInt(5, 0);
-                stmt.setBoolean(6, false);
-                
-                int affectedRows = stmt.executeUpdate();
-                
-                if (affectedRows > 0) {
-                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                        if (generatedKeys.next()) {
-                            int newRunId = generatedKeys.getInt(1);
-                            System.out.println("Nuova run creata con ID: " + newRunId);
-                            return true;
-                        }
-                    }
-                }
+            var existing = new model.dao.RunDAO(dbManager).findActiveRunByUser(currentUser.getNick());
+            if (existing.isPresent()) {
+                return false;
             }
-        } catch (SQLException e) {
-            System.err.println("Errore SQL nella creazione di una nuova run: " + e.getMessage());
-            e.printStackTrace();
+            Run run = new Run(currentUser.getNick(), 3, "DEFAULT");
+            this.currentRun = run;
+            runDAO.save(run);
+            return true;
+        } catch (Exception e) {
+            System.err.println("Errore nella creazione di una nuova run: " + e.getMessage());
+            return false;
         }
-        
-        return false;
     }
     
     public boolean resumeLastRun() {
-        if (!gameDataService.hasActiveRun()) {
-            System.out.println("Nessuna run attiva da riprendere.");
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser == null) return false;
+            var opt = new model.dao.RunDAO(dbManager).findActiveRunByUser(currentUser.getNick());
+            if (opt.isPresent()) {
+                this.currentRun = opt.get();
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            System.err.println("Errore nel resume della run: " + e.getMessage());
             return false;
         }
-        
-        var runInfo = gameDataService.getActiveRunInfo();
-        if (runInfo == null) {
-            System.err.println("Impossibile recuperare le informazioni della run attiva.");
-            return false;
-        }
-        
-        System.out.println("Ripresa run ID: " + runInfo.get("run_id") + 
-                          " - Livello: " + runInfo.get("current_level") + 
-                          " - Personaggio: " + runInfo.get("character_id"));
-        
-        return true;
     }
     
     private User getCurrentUser() {
-        String sql = "SELECT * FROM User LIMIT 1";
-        
-        try (Connection conn = dbManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            
-            if (rs.next()) {
-                User user = new User(
-                    rs.getString("nick"),
-                    rs.getObject("current_run_id", Integer.class),
-                    rs.getInt("points_available"),
-                    rs.getInt("points_total"),
-                    rs.getInt("runs_completed"),
-                    rs.getInt("runs_won"),
-                    null
-                );
-                return user;
-            }
-        } catch (SQLException e) {
-            System.err.println("Errore SQL nel recupero dell'utente: " + e.getMessage());
+        String nick = SessionService.getCurrentNick();
+        if (nick == null || nick.isEmpty()) {
+            return null;
         }
-        
-        return null;
+        try {
+            return new model.dao.UserDAO(dbManager).getUserByNick(nick);
+        } catch (Exception e) {
+            System.err.println("Errore nel recupero dell'utente corrente: " + e.getMessage());
+            return null;
+        }
     }
     
     private RunFrozenBuffs freezeBuffs(User user) {
@@ -362,6 +326,10 @@ public class RunService {
         if (currentRun != null) {
             runDAO.save(currentRun);
         }
+    }
+    
+    public void save() {
+        saveCurrentRun();
     }
     
     public Run getCurrentRun() {

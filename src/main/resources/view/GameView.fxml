@@ -35,17 +35,8 @@
                     <Label fx:id="difficultyLabel" text="DIFFICULTY: EASY" styleClass="difficulty-label" />
                 </VBox>
                 
-                <Button fx:id="menuButton" AnchorPane.topAnchor="23.0" AnchorPane.rightAnchor="30.0" 
-                        onAction="#handleMenuClick" styleClass="menu-button" focusTraversable="false"
-                        style="-fx-background-color: transparent; -fx-background-insets: 0; -fx-background-radius: 0; -fx-border-color: transparent; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;">
-                    <graphic>
-                        <ImageView fitHeight="65.0" preserveRatio="true" smooth="true">
-                             <image>
-                                <Image url="@../assets/icons/utils/settings.png" />
-                             </image>
-                        </ImageView>
-                    </graphic>
-                </Button>
+                <Button fx:id="menuButton" AnchorPane.topAnchor="23.0" AnchorPane.rightAnchor="110.0" 
+                        onAction="#handleMenuClick" text="Salva ed esci" styleClass="menu-button" focusTraversable="false"/>
 
                 <Button fx:id="itemSelectionButton" AnchorPane.topAnchor="23.0" AnchorPane.rightAnchor="110.0"
                         onAction="#handleItemSelectionClick" styleClass="menu-button" focusTraversable="false"
@@ -62,6 +53,21 @@
                     </tooltip>
                 </Button>
 
+                <Button fx:id="skipButton" AnchorPane.topAnchor="23.0" AnchorPane.rightAnchor="30.0"
+                        styleClass="menu-button" focusTraversable="false"
+                        style="-fx-background-color: transparent; -fx-background-insets: 0; -fx-background-radius: 0; -fx-border-color: transparent; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;">
+                    <graphic>
+                        <ImageView fitHeight="65.0" preserveRatio="true" smooth="true">
+                            <image>
+                                <Image url="@../assets/icons/utils/settings.png" />
+                            </image>
+                        </ImageView>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="Skip Level" />
+                    </tooltip>
+                </Button>
+
                 <VBox alignment="BOTTOM_CENTER" AnchorPane.bottomAnchor="100.0" AnchorPane.leftAnchor="80.0">
                     <ImageView fx:id="characterSpriteView" preserveRatio="true" smooth="true" />
                 </VBox>
@@ -71,6 +77,12 @@
 
                 <HBox fx:id="inventorySlotsHBox" alignment="CENTER_LEFT" spacing="10.0"
                       AnchorPane.topAnchor="26.0" AnchorPane.rightAnchor="350.0" />
+
+                <HBox fx:id="selectedBuffsHBox" alignment="CENTER_RIGHT" spacing="6.0"
+                      AnchorPane.topAnchor="26.0" AnchorPane.rightAnchor="220.0" />
+
+                <VBox fx:id="buffInfoBox" alignment="TOP_RIGHT" spacing="6.0"
+                      AnchorPane.topAnchor="26.0" AnchorPane.rightAnchor="160.0" />
 
                 <VBox alignment="BOTTOM_CENTER" AnchorPane.bottomAnchor="100.0" AnchorPane.rightAnchor="50.0">
                     <ImageView fx:id="enemySpriteView" preserveRatio="true" smooth="true" />

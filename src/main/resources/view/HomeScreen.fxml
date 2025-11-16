@@ -23,9 +23,9 @@
               AnchorPane.rightAnchor="0.0">
             
             <!-- Settings Icon in alto a sinistra -->
-            <HBox alignment="TOP_LEFT" spacing="0">
+            <HBox alignment="TOP_RIGHT" spacing="0">
                 <padding>
-                    <Insets top="16.0" left="16.0" bottom="0.0" right="0.0"/>
+                    <Insets top="16.0" left="0.0" bottom="0.0" right="16.0"/>
                 </padding>
                 <ImageView fx:id="settingsIcon" fitWidth="48.0" fitHeight="48.0" styleClass="settings-icon">
                     <image>
@@ -42,7 +42,7 @@
                 
                 <!-- Continue Expedition Button -->
                 <Button fx:id="continueButton" 
-                       text="Continue Expedition" 
+                       text="Venture Forth" 
                        prefWidth="280.0" 
                        prefHeight="60.0"
                        style="-fx-background-radius: 8; -fx-background-color: #4CAF50; -fx-text-fill: #FFFFFF;"
@@ -66,7 +66,7 @@
                 
                 <!-- The Reliquary Button -->
                 <Button fx:id="reliquaryButton" 
-                       text="The Reliquary" 
+                       text="The Ancestor's Legacy" 
                        prefWidth="280.0" 
                        prefHeight="60.0"
                        style="-fx-background-radius: 8; -fx-background-color: #FF9800; -fx-text-fill: #FFFFFF;"
@@ -82,12 +82,9 @@
             <Region VBox.vgrow="ALWAYS"/>
             
         </VBox>
+        <StackPane fx:id="optionsModalContainer" visible="false" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" />
     </children>
     
-    <!-- Stili CSS -->
-    <stylesheets>
-        <String fx:value="/style.css"/>
-        <String fx:value="/home_screen.css"/>
-    </stylesheets>
+    
     
 </AnchorPane>

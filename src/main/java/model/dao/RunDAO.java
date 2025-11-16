@@ -17,35 +17,23 @@ public class RunDAO {
 
     public void save(Run run) {
         String sql = """
-            INSERT INTO Run (run_id, user_nick, character_selected, lives_remaining, 
-                            total_errors, score)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(run_id) DO UPDATE SET 
-                lives_remaining = ?,
-                total_errors = ?,
-                score = ?
+            INSERT INTO Run (user_nick, character_selected, lives_remaining, total_errors)
+            VALUES (?, ?, ?, ?)
         """;
 
         try (Connection conn = dbManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
-            stmt.setObject(1, run.getId());
-            stmt.setString(2, run.getUserNick());
-            stmt.setString(3, run.getCharacterId());
-            stmt.setInt(4, run.getLivesRemaining());
-            stmt.setInt(5, run.getTotalErrors());
-            stmt.setInt(6, run.getScore());
-            stmt.setInt(7, run.getLivesRemaining());
-            stmt.setInt(8, run.getTotalErrors());
-            stmt.setInt(9, run.getScore());
+            stmt.setString(1, run.getUserNick());
+            stmt.setString(2, run.getCharacterId());
+            stmt.setInt(3, run.getLivesRemaining());
+            stmt.setInt(4, run.getTotalErrors());
 
             stmt.executeUpdate();
             
-            if (run.getId() == null) {
-                try (ResultSet rs = stmt.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        run.setId(rs.getInt(1));
-                    }
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    run.setId(rs.getInt(1));
                 }
             }
             
@@ -126,7 +114,11 @@ public class RunDAO {
 
     public Optional<Run> findActiveRunByUser(String userNick) {
         String sql = """
-            SELECT r.*, ls.*, i.item_id, i.quantity
+            SELECT r.*, 
+                   ls.initial_grid_data AS initial_grid,
+                   ls.user_grid_data AS user_grid,
+                   ls.current_level, ls.enemy_sprite_id, ls.difficulty_tier, ls.notes_data, ls.errors_in_level, ls.protection_used,
+                   i.item_type_id AS item_id, i.capacity AS quantity
             FROM Run r
             LEFT JOIN Run_Level_State ls ON r.run_id = ls.run_id
             LEFT JOIN Run_Inventory i ON r.run_id = i.run_id
@@ -157,7 +149,7 @@ public class RunDAO {
                         run.addItemToInventory(itemId, rs.getInt("quantity"));
                     }
                     
-                    if (run.getCurrentLevelState() == null && rs.getString("initial_grid_data") != null) {
+                    if (run.getCurrentLevelState() == null && rs.getString("initial_grid") != null) {
                         run.setCurrentLevelState(mapLevelState(rs));
                     }
                 } catch (SQLException e) {
@@ -189,8 +181,8 @@ public class RunDAO {
             rs.getInt("current_level"),
             rs.getString("enemy_sprite_id"),
             rs.getString("difficulty_tier"),
-            rs.getString("initial_grid_data"),
-            rs.getString("user_grid_data"),
+            rs.getString("initial_grid"),
+            rs.getString("user_grid"),
             rs.getString("notes_data"),
             rs.getInt("errors_in_level"),
             rs.getBoolean("protection_used")

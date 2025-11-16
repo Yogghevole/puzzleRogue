@@ -12,6 +12,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.Node;
 import javafx.scene.input.MouseEvent;
 import view.manager.LivesUIManager;
+import javafx.stage.Stage;
 import view.manager.InventorySlotsUIManager;
 import javafx.geometry.Pos;
 import model.service.RunService;
@@ -20,6 +21,7 @@ import model.db.DatabaseManager;
 import model.service.SudokuGenerator;
 import model.domain.SudokuGrid;
 import model.domain.RunFrozenBuffs;
+import model.domain.RunLevelState;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,6 +48,7 @@ public class GameController {
     @FXML private Label levelLabel;
     @FXML private Label difficultyLabel;
     @FXML private Button menuButton;
+    @FXML private Button skipButton;
     @FXML private Button itemSelectionButton;
     @FXML private ImageView characterSpriteView;
     @FXML private ImageView enemySpriteView;
@@ -53,6 +56,8 @@ public class GameController {
     @FXML private HBox livesHBox;
     @FXML private HBox inputControlHBox;
     @FXML private HBox inventorySlotsHBox;
+    @FXML private HBox selectedBuffsHBox;
+    @FXML private VBox buffInfoBox;
     
     private RunService runService;
     private static final int GRID_SIZE = 9;
@@ -131,12 +136,15 @@ public class GameController {
         buildSudokuGrid();
 
         if (menuButton != null) {
-            menuButton.setText("");
-            menuButton.setOnAction(e -> completeLevelAndAdvance());
+            menuButton.setText("Salva ed esci");
+            menuButton.setOnAction(e -> saveAndExitToHome());
+        }
 
-            menuButton.setOnMouseEntered(e -> {
-                if (menuButton.getGraphic() instanceof ImageView) {
-                    ImageView iv = (ImageView) menuButton.getGraphic();
+        if (skipButton != null) {
+            skipButton.setOnAction(e -> completeLevelAndAdvance());
+            skipButton.setOnMouseEntered(e -> {
+                if (skipButton.getGraphic() instanceof ImageView) {
+                    ImageView iv = (ImageView) skipButton.getGraphic();
                     javafx.scene.effect.Glow glow = new javafx.scene.effect.Glow(0.35);
                     javafx.scene.effect.DropShadow shadow = new javafx.scene.effect.DropShadow();
                     shadow.setRadius(6.0);
@@ -149,9 +157,9 @@ public class GameController {
                     ));
                 }
             });
-            menuButton.setOnMouseExited(e -> {
-                if (menuButton.getGraphic() instanceof ImageView) {
-                    ImageView iv = (ImageView) menuButton.getGraphic();
+            skipButton.setOnMouseExited(e -> {
+                if (skipButton.getGraphic() instanceof ImageView) {
+                    ImageView iv = (ImageView) skipButton.getGraphic();
                     iv.setEffect(null);
                 }
             });
@@ -163,9 +171,34 @@ public class GameController {
         }
 
         backgroundManager.resetRun();
-        hideGameUIForSelection(true);
-        applyBackgroundForCurrentLevel();
-        showCharacterSelectionModal();
+        if (runService != null && runService.getCurrentRun() != null) {
+            hideGameUIForSelection(false);
+            characterSelected = true;
+            RunLevelState st = runService.getCurrentRun().getCurrentLevelState();
+            if (st == null) {
+                runService.startLevel(1);
+                st = runService.getCurrentRun().getCurrentLevelState();
+            }
+            currentLevel = st.getCurrentLevel();
+            applyBackgroundForCurrentLevel();
+            try {
+                int[][] initial = RunLevelState.convertStringToGrid(st.getInitialGridData());
+                int[][] user = RunLevelState.convertStringToGrid(st.getUserGridData());
+                SudokuGrid grid = new SudokuGrid(initial, user, st.getDifficultyTier());
+                sudokuEngine = new model.engine.SudokuEngine(grid);
+                applyPuzzleToUI(grid);
+                updateLevelAndDifficultyUI();
+                spawnEnemyForCurrentLevel();
+                renderSelectedBuffs();
+                renderBuffInfo();
+            } catch (Exception e) {
+                System.err.println("Errore nel ripristino griglia utente: " + e.getMessage());
+            }
+        } else {
+            hideGameUIForSelection(true);
+            applyBackgroundForCurrentLevel();
+            showCharacterSelectionModal();
+        }
 
         javafx.application.Platform.runLater(this::applyCustomCursor);
 
@@ -180,6 +213,10 @@ public class GameController {
                 "/assets/icons/items/placeholder.png");
         inventorySlotsUIManager.setCapacityLevel(0);
         initializeInventoryInteraction();
+
+        if (itemSelectionButton != null) {
+            itemSelectionButton.setVisible(false);
+        }
 
         if (mainGameArea != null) {
             mainGameArea.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
@@ -198,6 +235,64 @@ public class GameController {
                 }
             });
         }
+    }
+
+    private void renderSelectedBuffs() {
+        try {
+            String nick = model.service.SessionService.getCurrentNick();
+            if (nick == null || nick.isEmpty() || selectedBuffsHBox == null) return;
+            var user = new model.dao.UserDAO(model.db.DatabaseManager.getInstance()).getUserByNick(nick);
+            if (user == null) return;
+            Map<String, Integer> buffs = user.getPermanentBuffLevels();
+            selectedBuffsHBox.getChildren().clear();
+            for (Map.Entry<String, Integer> e : buffs.entrySet()) {
+                if (e.getValue() != null && e.getValue() > 0) {
+                    String path = mapBuffIcon(e.getKey());
+                    if (path != null) {
+                        ImageView badge = new ImageView(new Image(getClass().getResourceAsStream(path), 28, 28, true, true));
+                        selectedBuffsHBox.getChildren().add(badge);
+                    }
+                }
+            }
+        } catch (Exception ignore) {}
+    }
+
+    private String mapBuffIcon(String id) {
+        if (id == null) return null;
+        switch (id) {
+            case "EXTRA_LIVES": return "/assets/icons/buffs/extra_lives.png";
+            case "FIRST_ERROR_PROTECT": return "/assets/icons/buffs/first_error_protection.png";
+            case "STARTING_HINTS": return "/assets/icons/buffs/extra_hints.png";
+            case "POINT_BONUS": return "/assets/icons/buffs/point_bonus.png";
+            case "INVENTORY_CAPACITY": return "/assets/icons/buffs/inventory_capacity.png";
+            case "STARTING_CELLS": return "/assets/icons/buffs/starting_cells.png";
+            default: return null;
+        }
+    }
+
+    private void renderBuffInfo() {
+        try {
+            if (buffInfoBox == null) return;
+            String id = model.service.SessionService.getLastSelectedBuff();
+            buffInfoBox.getChildren().clear();
+            if (id == null || id.isEmpty()) return;
+            javafx.scene.control.Label name = new javafx.scene.control.Label(id.replace('_',' '));
+            name.getStyleClass().add("heading-small");
+            int level = 1;
+            try {
+                String nick = model.service.SessionService.getCurrentNick();
+                if (nick != null) {
+                    var user = new model.dao.UserDAO(model.db.DatabaseManager.getInstance()).getUserByNick(nick);
+                    if (user != null) level = user.getBuffLevel(id);
+                }
+            } catch (Exception ignore) {}
+            double value = new model.service.GameDataService(model.db.DatabaseManager.getInstance())
+                    .getBuffLevelData(id, Math.max(level,1))
+                    .getOrDefault("value", 0).doubleValue();
+            javafx.scene.control.Label desc = new javafx.scene.control.Label("Level " + Math.max(level,1) + " • Value " + value);
+            desc.getStyleClass().add("hint-label");
+            buffInfoBox.getChildren().addAll(name, desc);
+        } catch (Exception ignore) {}
     }
 
     
@@ -291,7 +386,7 @@ public class GameController {
     
     @FXML
     private void handleMenuClick() {
-        System.out.println("Show Options Menu.");
+        saveAndExitToHome();
     }
     
     private void showCharacterSelectionModal() {
@@ -331,6 +426,26 @@ public class GameController {
             completeLevelAndAdvance();
         }
     }
+
+    private void saveAndExitToHome() {
+        try {
+            if (runService != null && runService.getCurrentRun() != null) {
+                if (sudokuEngine != null && runService.getCurrentRun().getCurrentLevelState() != null) {
+                    int[][] ug = sudokuEngine.getUserGrid();
+                    String data = model.domain.RunLevelState.convertGridToString(ug);
+                    runService.getCurrentRun().getCurrentLevelState().setUserGridData(data);
+                }
+                runService.save();
+            }
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/HomeScreen.fxml"));
+            javafx.scene.Parent root = loader.load();
+            Stage stage = (Stage) mainGameArea.getScene().getWindow();
+            stage.setScene(new javafx.scene.Scene(root, stage.getWidth(), stage.getHeight()));
+            stage.show();
+        } catch (Exception e) {
+            System.err.println("Errore nel salvataggio e ritorno alla Home: " + e.getMessage());
+        }
+    }
     
 
     private void selectCharacterFromOption(view.manager.CharacterSelectionManager.Option opt) {
@@ -341,6 +456,8 @@ public class GameController {
             modalContainer.getStyleClass().clear();
             modalContainer.getChildren().clear();
             characterSelected = true;
+
+            model.service.SessionService.setLastSelectedCharacter(opt.id);
 
             applyThemeForCharacter(opt.id);
 
