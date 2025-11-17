@@ -22,6 +22,10 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+tasks.processResources {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 tasks.test {
     useJUnitPlatform()
 }
@@ -44,4 +48,8 @@ tasks.withType<JavaCompile> {
 
 application {
     mainClass.set("app.Main")
+    applicationDefaultJvmArgs = listOf(
+        "--enable-native-access=javafx.graphics",
+        "--enable-native-access=ALL-UNNAMED"
+    )
 }
