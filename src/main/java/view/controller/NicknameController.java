@@ -4,7 +4,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import javafx.scene.Scene;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.image.Image;
@@ -12,6 +11,7 @@ import javafx.scene.layout.*;
 import model.db.DatabaseManager;
 import model.dao.UserDAO;
 import model.service.SessionService;
+import view.util.StageUtils;
 
 public class NicknameController {
     @FXML private TextField nickField;
@@ -61,8 +61,7 @@ public class NicknameController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/HomeScreen.fxml"));
             Parent root = loader.load();
             Stage stage = (Stage) nickField.getScene().getWindow();
-            stage.setScene(new Scene(root, stage.getWidth(), stage.getHeight()));
-            stage.show();
+            StageUtils.setSceneRoot(stage, root);
         } catch (Exception ex) {
             System.err.println("Errore nella navigazione alla Home: " + ex.getMessage());
         }

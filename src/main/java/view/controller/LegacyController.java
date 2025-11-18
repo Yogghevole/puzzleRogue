@@ -20,6 +20,7 @@ import java.util.*;
 import model.db.DatabaseManager;
 import model.dao.UserDAO;
 import model.service.SessionService;
+import view.util.StageUtils;
 
 public class LegacyController {
     @FXML private Button backButton;
@@ -150,8 +151,7 @@ public class LegacyController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/HomeScreen.fxml"));
             Parent root = loader.load();
             Stage stage = (Stage) backButton.getScene().getWindow();
-            stage.setScene(new javafx.scene.Scene(root, stage.getWidth(), stage.getHeight()));
-            stage.show();
+            StageUtils.setSceneRoot(stage, root);
         } catch (Exception ex) {
             System.err.println("Errore nella navigazione alla Home: " + ex.getMessage());
         }

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.function.Consumer;
+import view.util.ModalUtils;
 
 /**
  * Gestisce l'overlay di selezione oggetto mostrato alla fine dei livelli (non boss).
@@ -37,9 +38,7 @@ public class ItemSelectionManager {
 
     public void show(StackPane modalContainer, Consumer<ItemOption> onSelect) {
         if (modalContainer == null) return;
-        modalContainer.getStyleClass().clear();
-        modalContainer.getStyleClass().add("modal-overlay");
-        modalContainer.setVisible(true);
+        ModalUtils.show(modalContainer, ModalUtils.Type.DEFAULT);
 
         javafx.scene.control.Label title = new javafx.scene.control.Label("Choose your item");
         title.getStyleClass().add("item-select-title");

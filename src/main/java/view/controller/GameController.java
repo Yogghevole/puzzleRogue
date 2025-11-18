@@ -9,6 +9,8 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.Node;
 import javafx.scene.input.MouseEvent;
 import view.manager.LivesUIManager;
@@ -39,12 +41,16 @@ import view.manager.SudokuUIManager;
 import view.manager.GameInputManager;
 import view.manager.HudManager;
 import view.manager.EndGameManager;
+import view.util.StageUtils;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 
 public class GameController {
     
     @FXML private StackPane mainGameArea; 
     @FXML private ImageView backgroundImageView;
     @FXML private StackPane modalContainer;
+    @FXML private AnchorPane gameContentPane;
     @FXML private Label levelLabel;
     @FXML private Label difficultyLabel;
     @FXML private Button menuButton;
@@ -53,11 +59,14 @@ public class GameController {
     @FXML private ImageView characterSpriteView;
     @FXML private ImageView enemySpriteView;
     @FXML private GridPane sudokuGridContainer;
+    @FXML private StackPane sudokuAreaStack;
     @FXML private HBox livesHBox;
     @FXML private HBox inputControlHBox;
     @FXML private HBox inventorySlotsHBox;
     @FXML private HBox selectedBuffsHBox;
     @FXML private VBox buffInfoBox;
+    @FXML private VBox characterSpriteBox;
+    @FXML private VBox enemySpriteBox;
     
     private RunService runService;
     private static final int GRID_SIZE = 9;
@@ -99,13 +108,16 @@ public class GameController {
         this.runService = runService;
     }
     
+    @FXML private ImageView headerImageView;
+    @FXML private ImageView footerImageView;
+    @FXML private Pane headerDimmer;
+    @FXML private Pane footerDimmer;
+    
     @FXML
     public void initialize() {
         try {
             if (backgroundImageView != null) {
-                backgroundImageView.setPreserveRatio(false);
-                backgroundImageView.setFitWidth(1920);
-                backgroundImageView.setFitHeight(800);
+                backgroundImageView.setPreserveRatio(true);
                 StackPane.setAlignment(backgroundImageView, Pos.CENTER);
                 backgroundImageView.setPickOnBounds(true);
                 backgroundImageView.setOnMouseClicked(e -> {
@@ -126,6 +138,14 @@ public class GameController {
                         clearRegionHighlights();
                     }
                 });
+                if (mainGameArea.getScene() != null) {
+                    bindToSceneSize(mainGameArea.getScene());
+                } else {
+                    mainGameArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                        if (newScene != null) bindToSceneSize(newScene);
+                    });
+                }
+                bindBackgroundToMainArea();
             }
             backgroundManager.preloadAll();
             
@@ -135,13 +155,18 @@ public class GameController {
         
         buildSudokuGrid();
 
+        setupKeyboardShortcuts();
+
         if (menuButton != null) {
             menuButton.setText("Salva ed esci");
             menuButton.setOnAction(e -> saveAndExitToHome());
         }
 
         if (skipButton != null) {
-            skipButton.setOnAction(e -> completeLevelAndAdvance());
+            skipButton.setOnAction(e -> {
+                hideGameUIForSelection(true);
+                showItemSelectionModal();
+            });
             skipButton.setOnMouseEntered(e -> {
                 if (skipButton.getGraphic() instanceof ImageView) {
                     ImageView iv = (ImageView) skipButton.getGraphic();
@@ -236,6 +261,110 @@ public class GameController {
             });
         }
     }
+
+    private void setupKeyboardShortcuts() {
+        if (mainGameArea == null) return;
+        Runnable attach = () -> {
+            if (mainGameArea.getScene() == null) return;
+            mainGameArea.setFocusTraversable(true);
+            mainGameArea.requestFocus();
+            mainGameArea.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+                int value = mapKeyToDigit(e.getCode());
+                if (value >= 1 && value <= 9) {
+                    handleNumberInput(value);
+                    e.consume();
+                    return;
+                }
+                if (e.getCode() == KeyCode.N) {
+                    toggleNoteMode();
+                    e.consume();
+                    return;
+                }
+                if (e.getCode() == KeyCode.BACK_SPACE || e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.DIGIT0 || e.getCode() == KeyCode.NUMPAD0) {
+                    handleClearCell();
+                    e.consume();
+                }
+            });
+        };
+        if (mainGameArea.getScene() != null) {
+            attach.run();
+        } else {
+            mainGameArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) attach.run();
+            });
+        }
+    }
+
+    private int mapKeyToDigit(KeyCode code) {
+        switch (code) {
+            case DIGIT1: case NUMPAD1: return 1;
+            case DIGIT2: case NUMPAD2: return 2;
+            case DIGIT3: case NUMPAD3: return 3;
+            case DIGIT4: case NUMPAD4: return 4;
+            case DIGIT5: case NUMPAD5: return 5;
+            case DIGIT6: case NUMPAD6: return 6;
+            case DIGIT7: case NUMPAD7: return 7;
+            case DIGIT8: case NUMPAD8: return 8;
+            case DIGIT9: case NUMPAD9: return 9;
+            default: return 0;
+        }
+    }
+
+    private void bindToSceneSize(javafx.scene.Scene scene) {
+        if (headerImageView != null) {
+            headerImageView.setPreserveRatio(false);
+            headerImageView.setSmooth(true);
+            headerImageView.setFitWidth(scene.getWidth());
+        }
+        if (footerImageView != null) {
+            footerImageView.setPreserveRatio(false);
+            footerImageView.setSmooth(true);
+            footerImageView.setFitWidth(scene.getWidth());
+        }
+
+        scene.widthProperty().addListener((o, ov, nv) -> {
+            double w = nv.doubleValue();
+            if (headerImageView != null) headerImageView.setFitWidth(w);
+            if (footerImageView != null) footerImageView.setFitWidth(w);
+        });
+
+        if (mainGameArea != null) {
+            if (headerImageView != null && footerImageView != null) {
+                mainGameArea.prefHeightProperty().bind(scene.heightProperty()
+                    .subtract(headerImageView.fitHeightProperty())
+                    .subtract(footerImageView.fitHeightProperty()));
+            } else {
+                mainGameArea.prefHeightProperty().bind(scene.heightProperty().subtract(220.0));
+            }
+            mainGameArea.minHeightProperty().bind(mainGameArea.prefHeightProperty());
+            mainGameArea.maxHeightProperty().bind(mainGameArea.prefHeightProperty());
+        }
+    }
+
+    private void bindBackgroundToMainArea() {
+        if (backgroundImageView == null || mainGameArea == null) return;
+        backgroundImageView.setPreserveRatio(false);
+        backgroundImageView.setSmooth(true);
+        Runnable apply = () -> {
+            double w = mainGameArea.getWidth();
+            double h = mainGameArea.getHeight();
+            if (w > 0 && h > 0) {
+                backgroundImageView.setFitWidth(w);
+                backgroundImageView.setFitHeight(h);
+            }
+        };
+        apply.run();
+        mainGameArea.widthProperty().addListener((o, ov, nv) -> apply.run());
+        mainGameArea.heightProperty().addListener((o, ov, nv) -> apply.run());
+        mainGameArea.layoutBoundsProperty().addListener((o, ov, nv) -> apply.run());
+
+        if (gameContentPane != null) {
+            gameContentPane.prefHeightProperty().bind(mainGameArea.heightProperty());
+            gameContentPane.minHeightProperty().bind(gameContentPane.prefHeightProperty());
+            gameContentPane.maxHeightProperty().bind(gameContentPane.prefHeightProperty());
+        }
+    }
+
 
     private void renderSelectedBuffs() {
         try {
@@ -405,10 +534,9 @@ public class GameController {
 
     private void onItemSelectedFromOption(view.manager.ItemSelectionManager.ItemOption opt) {
         try {
-            if (modalContainer != null) {
-                modalContainer.getChildren().clear();
-                modalContainer.setVisible(false);
-            }
+        if (modalContainer != null) {
+            view.util.ModalUtils.hideAndClear(modalContainer);
+        }
             hideGameUIForSelection(false);
 
             if (opt != null && opt.id != null && !"NO_ITEM".equals(opt.id)) {
@@ -440,8 +568,7 @@ public class GameController {
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/HomeScreen.fxml"));
             javafx.scene.Parent root = loader.load();
             Stage stage = (Stage) mainGameArea.getScene().getWindow();
-            stage.setScene(new javafx.scene.Scene(root, stage.getWidth(), stage.getHeight()));
-            stage.show();
+            StageUtils.setSceneRoot(stage, root);
         } catch (Exception e) {
             System.err.println("Errore nel salvataggio e ritorno alla Home: " + e.getMessage());
         }
@@ -452,9 +579,7 @@ public class GameController {
         try {
             Image img = new Image(getClass().getResourceAsStream(opt.sprite));
             playerSpriteManager.applyTo(characterSpriteView, img, opt.id);
-            modalContainer.setVisible(false);
-            modalContainer.getStyleClass().clear();
-            modalContainer.getChildren().clear();
+            view.util.ModalUtils.hideAndClear(modalContainer);
             characterSelected = true;
 
             model.service.SessionService.setLastSelectedCharacter(opt.id);
@@ -549,7 +674,7 @@ public class GameController {
     }
 
     private void hideGameUIForSelection(boolean hide) {
-        hudManager.hideGameUIForSelection(hide, levelLabel, difficultyLabel, menuButton, characterSpriteView, enemySpriteView, sudokuGridContainer, livesHBox, inputControlHBox, inventorySlotsHBox);
+        hudManager.hideGameUIForSelection(hide, levelLabel, difficultyLabel, menuButton, characterSpriteView, enemySpriteView, sudokuGridContainer, livesHBox, inputControlHBox, inventorySlotsHBox, skipButton);
     }
 
     private void updateLevelAndDifficultyUI() {
@@ -803,6 +928,9 @@ public class GameController {
             livesUIManager.loseLifeWithAnimation();
             if (livesUIManager.getLives() <= 0) {
                 hideGameUIForSelection(true);
+                if (headerDimmer != null) headerDimmer.setVisible(true);
+                if (footerDimmer != null) footerDimmer.setVisible(true);
+                if (skipButton != null) skipButton.setVisible(false);
                 endGameManager.showDefeat(modalContainer);
             }
         }

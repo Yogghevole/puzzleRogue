@@ -16,6 +16,7 @@ import javafx.geometry.HPos;
 import java.util.Locale;
 import java.util.List;
 import java.util.function.Consumer;
+import view.util.ModalUtils;
 
 public class CharacterSelectionManager {
 
@@ -31,9 +32,7 @@ public class CharacterSelectionManager {
 
     public void show(StackPane modalContainer, Consumer<Option> onSelect) {
         if (modalContainer == null) return;
-        modalContainer.getStyleClass().clear();
-        modalContainer.getStyleClass().add("modal-overlay");
-        modalContainer.setVisible(true);
+        ModalUtils.show(modalContainer, ModalUtils.Type.DEFAULT);
 
         StackPane selectionPanel = new StackPane();
         ImageView panelBackground = new ImageView(new Image(getClass().getResourceAsStream("/assets/menu/character_selection.png")));

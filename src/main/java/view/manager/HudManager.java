@@ -22,7 +22,8 @@ public class HudManager {
                                        GridPane sudokuGridContainer,
                                        HBox livesHBox,
                                        HBox inputControlHBox,
-                                       HBox inventorySlotsHBox) {
+                                       HBox inventorySlotsHBox,
+                                       Button skipButton) {
         if (levelLabel != null) levelLabel.setVisible(!hide);
         if (difficultyLabel != null) difficultyLabel.setVisible(!hide);
         if (menuButton != null) menuButton.setVisible(!hide);
@@ -32,6 +33,7 @@ public class HudManager {
         if (livesHBox != null) livesHBox.setVisible(!hide);
         if (inputControlHBox != null) inputControlHBox.setVisible(!hide);
         if (inventorySlotsHBox != null) inventorySlotsHBox.setVisible(!hide);
+        if (skipButton != null) skipButton.setVisible(!hide);
     }
 
     public void updateLevelAndDifficultyUI(Label levelLabel,

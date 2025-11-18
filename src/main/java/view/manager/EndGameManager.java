@@ -20,15 +20,13 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.effect.InnerShadow;
+import view.util.ModalUtils;
 
 public class EndGameManager {
 
     public void showDefeat(StackPane modalContainer) {
         if (modalContainer == null) return;
-
-        modalContainer.getChildren().clear();
-        modalContainer.getStyleClass().clear();
-        modalContainer.getStyleClass().add("endgame-overlay");
+        ModalUtils.show(modalContainer, ModalUtils.Type.ENDGAME);
 
         Image defeatImg;
         try {
@@ -84,8 +82,6 @@ public class EndGameManager {
 
         modalContainer.getChildren().add(cardPane);
         cardPane.getChildren().add(defeatTitle);
-        modalContainer.setVisible(true);
-        modalContainer.setPickOnBounds(true);
 
         modalContainer.setOpacity(0.0);
         FadeTransition fadeContainer = new FadeTransition(Duration.millis(480), modalContainer);

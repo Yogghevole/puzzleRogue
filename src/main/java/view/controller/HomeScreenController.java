@@ -5,11 +5,11 @@ import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import javafx.scene.Scene;
 import model.service.GameDataService;
 import model.service.RunService;
+import view.util.StageUtils;
+import view.util.ModalUtils;
 
 public class HomeScreenController {
     
@@ -31,6 +31,14 @@ public class HomeScreenController {
         setupUI();
         checkContinueButtonState();
         setupButtonListeners();
+
+        if (mainContainer.getScene() != null) {
+            StageUtils.enforceFullscreen((Stage) mainContainer.getScene().getWindow());
+        } else {
+            mainContainer.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) StageUtils.enforceFullscreen((Stage) newScene.getWindow());
+            });
+        }
     }
     
     private void setupUI() {
@@ -118,8 +126,7 @@ public class HomeScreenController {
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/AncestorsLegacy.fxml"));
             javafx.scene.Parent root = loader.load();
             Stage stage = (Stage) mainContainer.getScene().getWindow();
-            stage.setScene(new javafx.scene.Scene(root, stage.getWidth(), stage.getHeight()));
-            stage.show();
+            StageUtils.setSceneRoot(stage, root);
         } catch (Exception e) {
             System.err.println("Errore apertura Legacy: " + e.getMessage());
             e.printStackTrace();
@@ -128,8 +135,7 @@ public class HomeScreenController {
     
     private void showSettingsMenu() {
         try {
-            optionsModalContainer.getChildren().clear();
-            optionsModalContainer.setVisible(true);
+            ModalUtils.show(optionsModalContainer, ModalUtils.Type.DEFAULT);
             AnchorPane panel = new AnchorPane();
             panel.setPrefSize(mainContainer.getWidth(), mainContainer.getHeight());
             javafx.scene.image.Image bg = new javafx.scene.image.Image(getClass().getResourceAsStream("/assets/icons/help/help.background.png"));
@@ -143,14 +149,14 @@ public class HomeScreenController {
             closeButton.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-size: 16; -fx-background-radius: 16;");
             AnchorPane.setTopAnchor(closeButton, 20.0);
             AnchorPane.setRightAnchor(closeButton, 20.0);
-            closeButton.setOnAction(e -> { optionsModalContainer.setVisible(false); optionsModalContainer.getChildren().clear(); });
+            closeButton.setOnAction(e -> { ModalUtils.hideAndClear(optionsModalContainer); });
             panel.getChildren().add(closeButton);
 
             VBox content = new VBox(12.0);
             content.setAlignment(javafx.geometry.Pos.CENTER);
             Button logoutBtn = new Button("Esci dall'account");
             Button quitBtn = new Button("Esci dal gioco");
-            logoutBtn.setOnAction(e -> { optionsModalContainer.setVisible(false); optionsModalContainer.getChildren().clear(); handleLogout(); });
+            logoutBtn.setOnAction(e -> { ModalUtils.hideAndClear(optionsModalContainer); handleLogout(); });
             quitBtn.setOnAction(e -> handleQuit());
             content.getChildren().addAll(logoutBtn, quitBtn);
             AnchorPane.setTopAnchor(content, 0.0);
@@ -204,8 +210,7 @@ public class HomeScreenController {
             javafx.scene.Parent root = loader.load();
             
             Stage stage = (Stage) mainContainer.getScene().getWindow();
-            stage.setScene(new javafx.scene.Scene(root));
-            stage.show();
+            StageUtils.setSceneRoot(stage, root);
         } catch (Exception e) {
             System.err.println("Errore nella navigazione: " + e.getMessage());
             e.printStackTrace();
@@ -219,10 +224,7 @@ public class HomeScreenController {
             GameController gameController = loader.getController();
             gameController.setRunService(runService);
             Stage stage = (Stage) mainContainer.getScene().getWindow();
-            Scene gameScene = new Scene(gameRoot, stage.getWidth(), stage.getHeight());
-            String cssPath = getClass().getResource("/style.css").toExternalForm();
-            gameScene.getStylesheets().add(cssPath);
-            stage.setScene(gameScene);
+            StageUtils.setSceneRoot(stage, gameRoot);
         } catch (Exception e) {
             System.err.println("Errore nella navigazione al gioco: " + e.getMessage());
             e.printStackTrace();
@@ -236,11 +238,7 @@ public class HomeScreenController {
             GameController gameController = loader.getController();
             gameController.setRunService(runService);
             Stage stage = (Stage) mainContainer.getScene().getWindow();
-            Scene gameScene = new Scene(gameRoot, stage.getWidth(), stage.getHeight());
-            String cssPath = getClass().getResource("/style.css").toExternalForm();
-            gameScene.getStylesheets().add(cssPath);
-            
-            stage.setScene(gameScene);
+            StageUtils.setSceneRoot(stage, gameRoot);
             
         } catch (java.io.IOException e) {
             System.err.println("Errore nella navigazione alla GameView: " + e.getMessage());
@@ -259,8 +257,7 @@ public class HomeScreenController {
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/Nickname.fxml"));
             javafx.scene.Parent root = loader.load();
             Stage stage = (Stage) mainContainer.getScene().getWindow();
-            stage.setScene(new javafx.scene.Scene(root, stage.getWidth(), stage.getHeight()));
-            stage.show();
+            StageUtils.setSceneRoot(stage, root);
         } catch (Exception e) {
             System.err.println("Errore nel logout: " + e.getMessage());
         }

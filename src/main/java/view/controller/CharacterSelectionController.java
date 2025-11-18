@@ -10,9 +10,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
-import javafx.scene.Scene;
 import javafx.scene.Node;
 import model.service.RunService;
+import view.util.StageUtils;
 
 public class CharacterSelectionController {
     
@@ -117,10 +117,8 @@ public class CharacterSelectionController {
                 getClass().getResource("/view/HomeScreenSimple.fxml")
             );
             javafx.scene.Parent root = loader.load();
-            
             Stage stage = (Stage) backButton.getScene().getWindow();
-            stage.setScene(new Scene(root));
-            stage.show();
+            StageUtils.setSceneRoot(stage, root);
         } catch (Exception e) {
             System.err.println("Errore nel tornare alla home: " + e.getMessage());
             e.printStackTrace();
@@ -141,12 +139,7 @@ public class CharacterSelectionController {
             view.controller.GameController gameController = loader.getController();
             gameController.setRunService(runService);
             Stage stage = (Stage) startButton.getScene().getWindow();
-            Scene gameScene = new Scene(root, stage.getWidth(), stage.getHeight());
-            String cssPath = getClass().getResource("/style.css").toExternalForm();
-            gameScene.getStylesheets().add(cssPath);
-            
-            stage.setScene(gameScene);
-            stage.show();
+            StageUtils.setSceneRoot(stage, root);
             
         } catch (Exception e) {
             System.err.println("Errore nell'avviare l'espedizione: " + e.getMessage());
