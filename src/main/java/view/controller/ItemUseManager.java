@@ -1,8 +1,6 @@
 package view.controller;
 
-import javafx.animation.FadeTransition;
-import javafx.animation.ScaleTransition;
-import javafx.animation.SequentialTransition;
+import javafx.animation.*;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
@@ -14,6 +12,7 @@ import model.service.GameDataService;
 import model.service.RunService;
 import view.manager.InventorySlotsUIManager;
 import view.manager.LivesUIManager;
+import view.manager.SoundManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,8 +24,7 @@ import java.util.function.BiConsumer;
 import java.util.function.IntConsumer;
 
 /**
- * Gestisce l'uso degli oggetti di inventario (hint, cuore mancante, sacrificio)
- * delegato dal GameController.
+ * Gestisce l'uso degli oggetti di inventario delegato dal GameController.
  */
 public class ItemUseManager {
     private final Supplier<SudokuEngine> sudokuSupplier;
@@ -46,6 +44,7 @@ public class ItemUseManager {
     private final Runnable clearSelectedCellRunnable;
     private final Runnable onWinBossRunnable;
     private final Runnable onWinNonBossRunnable;
+    private final java.util.function.BiConsumer<String, Color> sudokuToastShower;
 
     public ItemUseManager(
             Supplier<SudokuEngine> sudokuSupplier,
@@ -64,7 +63,8 @@ public class ItemUseManager {
             IntConsumer strongNumberHighlighter,
             Runnable clearSelectedCellRunnable,
             Runnable onWinBossRunnable,
-            Runnable onWinNonBossRunnable
+            Runnable onWinNonBossRunnable,
+            java.util.function.BiConsumer<String, Color> sudokuToastShower
     ) {
         this.sudokuSupplier = sudokuSupplier;
         this.livesUIManager = livesUIManager;
@@ -83,6 +83,7 @@ public class ItemUseManager {
         this.clearSelectedCellRunnable = clearSelectedCellRunnable;
         this.onWinBossRunnable = onWinBossRunnable;
         this.onWinNonBossRunnable = onWinNonBossRunnable;
+        this.sudokuToastShower = sudokuToastShower;
     }
 
     public void handleItemClick(int index, String resourcePath, MouseEvent event) {
@@ -93,6 +94,8 @@ public class ItemUseManager {
             handleHeartItem(index);
         } else if (resourcePath.endsWith("/sacrifice_item.png") || resourcePath.endsWith("sacrifice_item.png")) {
             handleSacrificeItem(index);
+        } else if (resourcePath.endsWith("/score_item.png") || resourcePath.endsWith("score_item.png")) {
+            handleScoreItem(index);
         }
     }
 
@@ -100,16 +103,19 @@ public class ItemUseManager {
         SudokuEngine sudokuEngine = sudokuSupplier.get();
         if (inventorySlotsUIManager == null || sudokuEngine == null) {
             if (inventorySlotsUIManager != null) inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
             return;
         }
         int selectedRow = selectedRowSupplier.getAsInt();
         int selectedCol = selectedColSupplier.getAsInt();
         if (selectedRow < 0 || selectedCol < 0) {
             inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
             return;
         }
         if (sudokuEngine.isInitialCell(selectedRow, selectedCol)) {
             inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
             return;
         }
 
@@ -122,6 +128,7 @@ public class ItemUseManager {
         Optional<Integer> inserted = sudokuEngine.revealHintAt(selectedRow, selectedCol);
         if (!inserted.isPresent()) {
             inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
             return;
         }
 
@@ -138,15 +145,19 @@ public class ItemUseManager {
 
         inventorySlotsUIManager.clearSlot(slotIndex);
         inventorySlotsUIManager.flashSuccessOnSlot(slotIndex);
-        try { runService.removeItem("HINT_ITEM"); } catch (Exception ignore) {}
+        SoundManager.getInstance().playHint();
+        try { runService.registerItemUse("HINT_ITEM"); } catch (Exception ignore) {}
 
         refreshHighlightsRunnable.run();
         regionHighlighter.accept(selectedRow, selectedCol);
         strongNumberHighlighter.accept(value);
 
         if (sudokuEngine.checkWin()) {
-            boolean isBoss = gameDataService.isBossLevel(currentLevelSupplier.getAsInt());
-            if (isBoss) {
+            int lvl = currentLevelSupplier.getAsInt();
+            boolean isBoss = gameDataService.isBossLevel(lvl);
+            int total = gameDataService.getTotalLevels();
+            boolean isFinalLevel = lvl >= total;
+            if (isBoss || isFinalLevel) {
                 onWinBossRunnable.run();
             } else {
                 onWinNonBossRunnable.run();
@@ -157,18 +168,21 @@ public class ItemUseManager {
     private void handleHeartItem(int slotIndex) {
         if (livesUIManager == null) {
             if (inventorySlotsUIManager != null) inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
             return;
         }
         int currentLives = livesUIManager.getLives();
         int maxLives = maxLivesSupplier.getAsInt();
         if (currentLives >= maxLives) {
             inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
             return;
         }
         livesUIManager.gainLifeWithAnimation(maxLives);
         inventorySlotsUIManager.clearSlot(slotIndex);
         inventorySlotsUIManager.flashSuccessOnSlot(slotIndex);
-        try { runService.removeItem("LIFE_BOOST_ITEM"); } catch (Exception ignore) {}
+        SoundManager.getInstance().playHeal();
+        try { runService.registerItemUse("LIFE_BOOST_ITEM"); } catch (Exception ignore) {}
     }
 
     private void handleSacrificeItem(int slotIndex) {
@@ -180,6 +194,7 @@ public class ItemUseManager {
         int lives = livesUIManager.getLives();
         if (lives <= 1) {
             inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
             return;
         }
 
@@ -198,12 +213,14 @@ public class ItemUseManager {
         }
         if (empties.isEmpty()) {
             inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
             return;
         }
         Collections.shuffle(empties, new Random());
         int revealCount = Math.min(2, empties.size());
 
         livesUIManager.loseLifeWithAnimation();
+        SoundManager.getInstance().playSacrifice();
 
         for (int i = 0; i < revealCount; i++) {
             int[] pos = empties.get(i);
@@ -229,17 +246,44 @@ public class ItemUseManager {
 
         inventorySlotsUIManager.clearSlot(slotIndex);
         inventorySlotsUIManager.flashSuccessOnSlot(slotIndex);
-        try { runService.removeItem("SACRIFICE_ITEM"); } catch (Exception ignore) {}
+        try { runService.registerItemUse("SACRIFICE_ITEM"); } catch (Exception ignore) {}
 
         refreshHighlightsRunnable.run();
         clearSelectedCellRunnable.run();
         if (sudokuEngine.checkWin()) {
-            boolean isBoss = gameDataService.isBossLevel(currentLevelSupplier.getAsInt());
-            if (isBoss) {
+            int lvl = currentLevelSupplier.getAsInt();
+            boolean isBoss = gameDataService.isBossLevel(lvl);
+            int total = gameDataService.getTotalLevels();
+            boolean isFinalLevel = lvl >= total;
+            if (isBoss || isFinalLevel) {
                 onWinBossRunnable.run();
             } else {
                 onWinNonBossRunnable.run();
             }
+        }
+    }
+
+    private void handleScoreItem(int slotIndex) {
+        if (inventorySlotsUIManager == null) {
+            return;
+        }
+        try { runService.getCurrentRun(); } catch (Exception ignore) {}
+        boolean used = false;
+        try { used = runService.registerItemUse("SCORE_ITEM"); } catch (Exception e) { }
+        if (used) {
+            inventorySlotsUIManager.clearSlot(slotIndex);
+            inventorySlotsUIManager.flashSuccessOnSlot(slotIndex);
+            SoundManager.getInstance().playScore();
+            try {
+                int lvl = currentLevelSupplier.getAsInt();
+                int pts = Math.max(1, lvl) * 10;
+                if (sudokuToastShower != null) {
+                    sudokuToastShower.accept("Score Bonus! +" + pts + " points", Color.WHITE);
+                }
+            } catch (Exception ignore) {}
+        } else {
+            inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
+            SoundManager.getInstance().playInvalidClick();
         }
     }
 

@@ -94,10 +94,6 @@ public class Run {
         return inventory;
     }
 
-    public int getInventoryItemCount() {
-        return inventory.values().stream().mapToInt(Integer::intValue).sum();
-    }
-
     public boolean addItemToInventory(String itemId, int quantity) {
         inventory.merge(itemId, quantity, Integer::sum);
         return true;

@@ -8,12 +8,6 @@ import model.domain.RunLevelState;
 import model.domain.SudokuGrid;
 import model.domain.User;
 import model.engine.SudokuEngine;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,6 +24,10 @@ public class RunService {
     private Run currentRun;
     private SudokuEngine currentEngine;
     private RunFrozenBuffs frozenBuffs; 
+    private int levelsCompletedCount = 0;
+    private int zeroErrorLevelCount = 0;
+    private int scoreItemPointsAccrued = 0;
+    private PointService.ScoreBreakdown lastRunBreakdown;
 
     public RunService(RunDAO runDAO, GameDataService gameDataService, SudokuGenerator sudokuGenerator) {
         this.runDAO = runDAO;
@@ -54,6 +52,10 @@ public class RunService {
         int extraLives = (int) getBuffValue("EXTRA_LIVES", 0);
         
         this.currentRun = new Run(user.getNick(), baseLives + extraLives, characterId);
+        this.levelsCompletedCount = 0;
+        this.zeroErrorLevelCount = 0;
+        this.scoreItemPointsAccrued = 0;
+        this.lastRunBreakdown = null;
         
         return startLevel(1);
     }
@@ -110,7 +112,6 @@ public class RunService {
         
         if (getBuffLevel("FIRST_ERROR_PROTECT") > 0 && !state.isProtectionUsed()) {
             state.setProtectionUsed(true);
-        System.out.println("First Error Protection activated! Life saved.");
             return;
         }
 
@@ -150,7 +151,9 @@ public class RunService {
                     
             case "SCORE_ITEM":
                 int currentLevel = currentRun.getCurrentLevelState().getCurrentLevel();
-                currentRun.addToScore(currentLevel * 10);
+                int pts = currentLevel * 10;
+                currentRun.addToScore(pts);
+                scoreItemPointsAccrued += pts;
                 success = true;
                 break;
         }
@@ -162,6 +165,46 @@ public class RunService {
         saveCurrentRun();
         return success;
     }
+
+    public void registerErrorEvent(String reason) {
+        if (currentRun == null) return;
+        RunLevelState state = currentRun.getCurrentLevelState();
+        if (state == null) return;
+        currentRun.incrementTotalErrors();
+        state.incrementErrorsInLevel();
+        saveCurrentRun();
+    }
+
+    public boolean registerItemUse(String itemId) {
+        if (currentRun == null) {
+            return false;
+        }
+        boolean ok = removeItemFromInventory(itemId);
+        if (!ok) {
+            return false;
+        }
+
+        switch (itemId) {
+            case "HINT_ITEM":
+                break;
+            case "LIFE_BOOST_ITEM":
+                currentRun.addLife();
+                break;
+            case "SACRIFICE_ITEM":
+                break;
+            case "SCORE_ITEM": {
+                int lvl = currentRun.getCurrentLevelState() != null ? currentRun.getCurrentLevelState().getCurrentLevel() : 1;
+                int pts = lvl * 10;
+                currentRun.addToScore(pts);
+                scoreItemPointsAccrued += pts;
+                break;
+            }
+            default:
+                break;
+        }
+        saveCurrentRun();
+        return true;
+    }
     
     public void endLevel(boolean win) {
         if (win) {
@@ -172,10 +215,12 @@ public class RunService {
             
             if (currentState.getErrorsInLevel() == 0) {
                 levelScore += 30;
+                zeroErrorLevelCount++;
             }
             
             currentRun.addToScore(levelScore);
-            
+            levelsCompletedCount++;
+
             int nextLevel = currentLevel + 1;
             if (nextLevel <= 10) {
                 startLevel(nextLevel);
@@ -183,44 +228,105 @@ public class RunService {
                 endRun(true);
             }
             
-        System.out.println("Level " + currentLevel + " Completed! Score: +" + levelScore);
         } else {
             endRun(false);
         }
     }
 
+    public void endLevelWithRemainingOverride(boolean win, int remainingOverride) {
+        if (!win) {
+            endRunWithRemainingItems(false, Math.max(0, remainingOverride));
+            return;
+        }
+
+        if (currentRun == null || currentRun.getCurrentLevelState() == null) {
+            endRunWithRemainingItems(true, Math.max(0, remainingOverride));
+            return;
+        }
+
+        RunLevelState currentState = currentRun.getCurrentLevelState();
+        int currentLevel = currentState.getCurrentLevel();
+
+        int levelScore = currentLevel * 10;
+        if (currentState.getErrorsInLevel() == 0) {
+            levelScore += 30;
+            zeroErrorLevelCount++;
+        }
+
+        currentRun.addToScore(levelScore);
+        levelsCompletedCount++;
+
+        int nextLevel = currentLevel + 1;
+        if (nextLevel <= 10) {
+            startLevel(nextLevel);
+        } else {
+            endRunWithRemainingItems(true, Math.max(0, remainingOverride));
+        }
+    }
+
     public void endRun(boolean win) {
         if (currentRun != null) {
-            int finalScore = currentRun.getScore();
-            
-            int remainingItems = currentRun.getInventoryItemCount();
-            finalScore += remainingItems * 20;
-            
-            finalScore += currentRun.getTotalErrors() * 5;
-            
-            if (win) {
-                finalScore += 200;
-            }
-            
+            int baseAccumulated = currentRun.getScore();
+            int remainingItems = 0;
+            int totalErrors = currentRun.getTotalErrors();
             int pointBonusLevel = getBuffLevel("POINT_BONUS");
-            if (pointBonusLevel > 0) {
-                double multiplier = getBuffValue("POINT_BONUS", 1.0);
-                finalScore = (int)(finalScore * multiplier);
-            } else {
-                if (frozenBuffs.isEmpty()) {
-                    finalScore += 50;
-                }
-            }
-            
-            currentRun.setFinalScore(finalScore);
+            double pointBonusMultiplier = pointBonusLevel > 0 ? getBuffValue("POINT_BONUS", 1.0) : 1.0;
+            boolean noBuffsHardMode = pointBonusLevel <= 0 && frozenBuffs.isEmpty();
+
+            PointService pointService = new PointService();
+            PointService.ScoreBreakdown bd = pointService.buildBreakdown(
+                    levelsCompletedCount,
+                    zeroErrorLevelCount,
+                    totalErrors,
+                    remainingItems,
+                    win,
+                    scoreItemPointsAccrued,
+                    pointBonusLevel,
+                    pointBonusMultiplier,
+                    noBuffsHardMode
+            );
+
+            currentRun.setFinalScore(bd.getTotal());
+            lastRunBreakdown = bd;
             saveCurrentRun();
-            
-        System.out.println("Run Ended. Victory: " + win + " Final Score: " + finalScore);
         }
         
         currentRun = null;
         currentEngine = null;
     }
+
+    public void endRunWithRemainingItems(boolean win, int remainingItemsOverride) {
+        if (currentRun != null) {
+            int baseAccumulated = currentRun.getScore();
+            int remainingItems = Math.max(0, remainingItemsOverride);
+            int totalErrors = currentRun.getTotalErrors();
+            int pointBonusLevel = getBuffLevel("POINT_BONUS");
+            double pointBonusMultiplier = pointBonusLevel > 0 ? getBuffValue("POINT_BONUS", 1.0) : 1.0;
+            boolean noBuffsHardMode = pointBonusLevel <= 0 && frozenBuffs.isEmpty();
+
+            PointService pointService = new PointService();
+            PointService.ScoreBreakdown bd = pointService.buildBreakdown(
+                    levelsCompletedCount,
+                    zeroErrorLevelCount,
+                    totalErrors,
+                    remainingItems,
+                    win,
+                    scoreItemPointsAccrued,
+                    pointBonusLevel,
+                    pointBonusMultiplier,
+                    noBuffsHardMode
+            );
+
+            currentRun.setFinalScore(bd.getTotal());
+            lastRunBreakdown = bd;
+            saveCurrentRun();
+        }
+
+        currentRun = null;
+        currentEngine = null;
+    }
+
+    public PointService.ScoreBreakdown getLastRunBreakdown() { return lastRunBreakdown; }
     
     public boolean startNewRun() {
         try {

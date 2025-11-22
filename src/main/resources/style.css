@@ -197,13 +197,36 @@
 }
 .item-select-title {
     -fx-font-family: 'Georgia';
-    -fx-font-weight: 700;
-    -fx-font-size: 44px; 
-    -fx-text-fill: #E8E1C9; 
+    -fx-font-weight: bold; 
+    -fx-font-size: 50px; 
     font-family: 'Georgia';
-    font-size: 44px;
-    font-weight: 700;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.85), 12, 0.25, 0, 2);
+    font-weight: bold; 
+    font-size: 50px; 
+    /* Allinea il colore al nome dell'oggetto */
+    -fx-text-fill: #E5D9B4; 
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 3, 0, 2, 2);
+}
+
+.item-name-label {
+    -fx-font-family: 'Georgia';
+    -fx-font-size: 20pt; 
+    font-family: 'Georgia';
+    font-size: 20pt; 
+    -fx-text-fill: #E5D9B4; 
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.7), 4, 0, 2, 2);
+    -fx-font-weight: 800; 
+    font-weight: 800;
+}
+
+.item-desc-label {
+    -fx-font-family: 'Georgia';
+    -fx-font-size: 14pt; 
+    -fx-text-fill: #E5D9B4; 
+    -fx-font-weight: normal;
+    font-family: 'Georgia';
+    font-size: 14pt; 
+    font-weight: 450;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 2, 0, 1, 1);
 }
 .character-option:hover {
     -fx-background-color: rgba(0, 0, 0, 0.35);
@@ -248,12 +271,8 @@
 }
 
 .note-mode-active {
-    -fx-border-color: #FFCC00;
-    -fx-border-width: 2px;
     -fx-background-color: rgba(255, 204, 0, 0.05);
     -fx-effect: dropshadow(gaussian, rgba(255, 204, 0, 0.6), 12, 0.2, 0, 0);
-    border-color: #FFCC00;
-    border-width: 2px;
     background-color: rgba(255, 204, 0, 0.05);
 }
 

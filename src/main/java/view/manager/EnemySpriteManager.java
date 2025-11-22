@@ -2,6 +2,8 @@ package view.manager;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.control.Label;
+import model.service.GameDataService;
 
 public class EnemySpriteManager {
 
@@ -31,6 +33,29 @@ public class EnemySpriteManager {
 
         double shift = computeHorizontalShift(difficultyDir);
         view.setTranslateX(shift);
+    }
+
+    public void spawnForLevel(ImageView view,
+                              Label difficultyLabel,
+                              GameDataService gameDataService,
+                              int currentLevel,
+                              java.util.Set<String> usedEnemyGlobal,
+                              java.util.Random rng) {
+        if (view == null || gameDataService == null) return;
+        String difficulty = (difficultyLabel != null) ? difficultyLabel.getText() : null;
+        if (difficulty == null || difficulty.isEmpty()) {
+            difficulty = gameDataService.getBaseDifficultyByLevel(currentLevel);
+            if (difficulty == null || "UNKNOWN".equalsIgnoreCase(difficulty)) {
+                difficulty = gameDataService.getDifficultyFallbackByLevel(currentLevel);
+            }
+        }
+        String enemySpritePath = gameDataService.pickEnemySpritePath(difficulty, usedEnemyGlobal, rng);
+        if (enemySpritePath != null) {
+            Image img = new Image(getClass().getResourceAsStream(enemySpritePath));
+            applyTo(view, img, enemySpritePath);
+        } else {
+            view.setVisible(false);
+        }
     }
 
     private double computeDesiredFitHeight(double naturalH, String difficultyDir, String fileNameNoExt) {

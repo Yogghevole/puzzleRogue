@@ -40,11 +40,9 @@ public class DatabaseManager {
     }
 
     public void initializeDatabase() {
-        System.out.println("Initializing Database (" + DB_FILE_NAME + ")...");
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             executeSqlScript(conn, CREATE_SCRIPT);
             executeSqlScript(conn, INSERT_SCRIPT);
-        System.out.println("Database initialized successfully.");
         } catch (SQLException e) {
             System.err.println("Fatal error during Database initialization: " + e.getMessage());
         }

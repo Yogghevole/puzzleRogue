@@ -9,6 +9,8 @@ import javafx.stage.Stage;
 import model.service.GameDataService;
 import model.service.RunService;
 import view.util.StageUtils;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
 import view.util.ModalUtils;
 
 public class HomeScreenController {
@@ -58,6 +60,7 @@ public class HomeScreenController {
         settingsIcon.setFitWidth(48);
         settingsIcon.setFitHeight(48);
         settingsIcon.setPreserveRatio(true);
+        try { view.manager.SoundManager.getInstance().playHomeMusic(); } catch (Exception ignore) {}
     }
     
     private void checkContinueButtonState() {
@@ -136,6 +139,7 @@ public class HomeScreenController {
     private void showSettingsMenu() {
         try {
             ModalUtils.show(optionsModalContainer, ModalUtils.Type.DEFAULT);
+            try { view.manager.SoundManager.getInstance().playSettingsToggle(); } catch (Exception ignore) {}
             AnchorPane panel = new AnchorPane();
             panel.setPrefSize(mainContainer.getWidth(), mainContainer.getHeight());
             javafx.scene.image.Image bg = new javafx.scene.image.Image(getClass().getResourceAsStream("/assets/icons/help/help.background.png"));
@@ -149,7 +153,7 @@ public class HomeScreenController {
             closeButton.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-size: 16; -fx-background-radius: 16;");
             AnchorPane.setTopAnchor(closeButton, 20.0);
             AnchorPane.setRightAnchor(closeButton, 20.0);
-            closeButton.setOnAction(e -> { ModalUtils.hideAndClear(optionsModalContainer); });
+            closeButton.setOnAction(e -> { try { view.manager.SoundManager.getInstance().playSettingsToggle(); } catch (Exception ignore) {} ModalUtils.hideAndClear(optionsModalContainer); });
             panel.getChildren().add(closeButton);
 
             VBox content = new VBox(12.0);
@@ -190,7 +194,6 @@ public class HomeScreenController {
     }
     
     private void handleNewExpedition() {
-        System.out.println("Avvio nuova spedizione...");
         startNewRun();
     }
     
@@ -210,7 +213,13 @@ public class HomeScreenController {
             javafx.scene.Parent root = loader.load();
             
             Stage stage = (Stage) mainContainer.getScene().getWindow();
+            try { view.manager.SoundManager.getInstance().fadeOutMusic(400); } catch (Exception ignore) {}
             StageUtils.setSceneRoot(stage, root);
+            try {
+                PauseTransition pt = new PauseTransition(Duration.millis(300));
+                pt.setOnFinished(ev -> { try { view.manager.SoundManager.getInstance().playCharacterSelection(); } catch (Exception ignore) {} });
+                pt.play();
+            } catch (Exception ignore) {}
         } catch (Exception e) {
             System.err.println("Errore nella navigazione: " + e.getMessage());
             e.printStackTrace();
@@ -248,7 +257,6 @@ public class HomeScreenController {
     }
     
     private void showAlert(String title, String message) {
-        System.out.println(title + ": " + message);
     }
 
     private void handleLogout() {

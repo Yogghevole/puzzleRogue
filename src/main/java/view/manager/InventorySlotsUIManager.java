@@ -1,17 +1,17 @@
 package view.manager;
 
-import javafx.scene.effect.DropShadow;
-import javafx.scene.effect.ColorAdjust;
-import javafx.scene.effect.Effect;
+import javafx.scene.effect.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
+import javafx.scene.layout.StackPane;
 
 public class InventorySlotsUIManager {
     private final HBox inventoryHBox;
     private final String placeholderResourcePath;
     private int capacityLevel = 0;
+    private java.util.List<StackPane> slotContainers = new java.util.ArrayList<>();
     private java.util.List<ImageView> slotViews = new java.util.ArrayList<>();
     private java.util.List<Boolean> slotIsItem = new java.util.ArrayList<>();
     private java.util.List<String> slotImagePaths = new java.util.ArrayList<>();
@@ -36,6 +36,7 @@ public class InventorySlotsUIManager {
         if (inventoryHBox == null) return;
         inventoryHBox.getChildren().clear();
         slotViews.clear();
+        slotContainers.clear();
         int qty = capacityLevel + 2;
         slotIsItem.clear();
         slotImagePaths.clear();
@@ -43,8 +44,8 @@ public class InventorySlotsUIManager {
             ImageView slot = new ImageView(new Image(
                 getClass().getResourceAsStream(placeholderResourcePath)
             ));
-            slot.setFitWidth(56);
-            slot.setFitHeight(56);
+            slot.setFitWidth(61);
+            slot.setFitHeight(61);
             slot.setPreserveRatio(true);
             slot.setSmooth(true);
             slot.setMouseTransparent(true);
@@ -52,7 +53,11 @@ public class InventorySlotsUIManager {
             slot.getStyleClass().remove("inventory-item");
             slot.getStyleClass().remove("inventory-item-hint");
             slot.getStyleClass().remove("inventory-item-heart");
-            inventoryHBox.getChildren().add(slot);
+            StackPane container = new StackPane(slot);
+            container.setPrefSize(61, 61);
+            StackPane.setAlignment(slot, javafx.geometry.Pos.CENTER);
+            inventoryHBox.getChildren().add(container);
+            slotContainers.add(container);
             slotViews.add(slot);
             slotIsItem.add(false);
             slotImagePaths.add(placeholderResourcePath);
@@ -145,8 +150,44 @@ public class InventorySlotsUIManager {
         this.clickHandler = handler;
     }
 
+    public int getVisibleItemCount() {
+        int count = 0;
+        for (boolean isItem : slotIsItem) {
+            if (isItem) count++;
+        }
+        return count;
+    }
+
     public void flashFailureOnSlot(int index) { flashGlowOnSlot(index, javafx.scene.paint.Color.rgb(255, 60, 60)); }
     public void flashSuccessOnSlot(int index) { flashGlowOnSlot(index, javafx.scene.paint.Color.rgb(80, 255, 140)); }
+
+    public void showPointsToastOnSlot(int index, String text) {
+        if (index < 0 || index >= slotContainers.size()) return;
+        StackPane container = slotContainers.get(index);
+        javafx.scene.control.Label toast = new javafx.scene.control.Label(text);
+        toast.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2be37a;");
+        javafx.scene.effect.DropShadow ds = new javafx.scene.effect.DropShadow();
+        ds.setRadius(10);
+        ds.setSpread(0.3);
+        ds.setColor(javafx.scene.paint.Color.web("#2be37acc"));
+        toast.setEffect(ds);
+        toast.setOpacity(0.0);
+        StackPane.setAlignment(toast, javafx.geometry.Pos.TOP_CENTER);
+        container.getChildren().add(toast);
+
+        javafx.animation.FadeTransition fadeIn = new javafx.animation.FadeTransition(javafx.util.Duration.millis(120), toast);
+        fadeIn.setToValue(1.0);
+        javafx.animation.TranslateTransition translateUp = new javafx.animation.TranslateTransition(javafx.util.Duration.millis(600), toast);
+        translateUp.setFromY(0);
+        translateUp.setToY(-18);
+        javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(javafx.util.Duration.millis(320), toast);
+        fadeOut.setFromValue(1.0);
+        fadeOut.setToValue(0.0);
+
+        javafx.animation.SequentialTransition seq = new javafx.animation.SequentialTransition(fadeIn, translateUp, fadeOut);
+        seq.setOnFinished(e -> container.getChildren().remove(toast));
+        seq.play();
+    }
 
     private void flashGlowOnSlot(int index, javafx.scene.paint.Color color) {
         if (index < 0 || index >= slotViews.size()) return;

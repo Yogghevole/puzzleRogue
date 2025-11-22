@@ -1,12 +1,21 @@
 package model.service;
 
 import model.db.DatabaseManager;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
 
 public class GameDataService {
 
@@ -55,6 +64,46 @@ public class GameDataService {
             System.err.println("SQL error retrieving difficulty for level " + levelNumber + ": " + e.getMessage());
         }
         return "UNKNOWN";
+    }
+
+    public String getDifficultyFallbackByLevel(int level) {
+        if (level >= 10) return "NIGHTMARE";
+        if (level >= 7) return "HARD";
+        if (level >= 4) return "MEDIUM";
+        return "EASY";
+    }
+
+    public List<String> listEnemySpritePaths(String difficultyTier) {
+        if (difficultyTier == null) return Collections.emptyList();
+        String dirName = difficultyTier.toLowerCase();
+        try {
+            URL url = getClass().getResource("/assets/enemies/" + dirName);
+            if (url == null) return Collections.emptyList();
+            Path dir = Path.of(url.toURI());
+            try (Stream<Path> stream = Files.list(dir)) {
+                return stream
+                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".png"))
+                        .map(p -> "/assets/enemies/" + dirName + "/" + p.getFileName().toString())
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            System.err.println("Unable to list enemy files for '" + difficultyTier + "': " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    public String pickEnemySpritePath(String difficultyTier, Set<String> usedEnemyPaths, Random rng) {
+        List<String> all = listEnemySpritePaths(difficultyTier);
+        if (all.isEmpty()) return null;
+        List<String> available = all.stream()
+                .filter(path -> usedEnemyPaths == null || !usedEnemyPaths.contains(path))
+                .collect(Collectors.toList());
+        if (available.isEmpty()) {
+            System.err.println("No enemy available in difficulty '" + difficultyTier + "' not yet used in this run.");
+            return null;
+        }
+        Random r = (rng != null) ? rng : new Random();
+        return available.get(r.nextInt(available.size()));
     }
 
     public int getCharacterBaseLives(String charId) {

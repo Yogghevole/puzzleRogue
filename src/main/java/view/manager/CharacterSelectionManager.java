@@ -1,17 +1,11 @@
 package view.manager;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
+import javafx.geometry.*;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.text.TextAlignment;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.RowConstraints;
 import javafx.geometry.HPos;
 import java.util.Locale;
 import java.util.List;
@@ -135,6 +129,5 @@ public class CharacterSelectionManager {
         modalContainer.getChildren().clear();
         modalContainer.getChildren().add(selectionPanel);
         StackPane.setAlignment(selectionPanel, Pos.CENTER);
-        System.out.println("Show Character Selection.");
     }
 }

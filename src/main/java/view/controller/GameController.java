@@ -1,49 +1,22 @@
 package view.controller;
 
-import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.Node;
-import javafx.scene.input.MouseEvent;
-import view.manager.LivesUIManager;
-import javafx.stage.Stage;
-import view.manager.InventorySlotsUIManager;
-import javafx.geometry.Pos;
-import model.service.RunService;
-import model.service.GameDataService;
-import model.db.DatabaseManager;
-import model.service.SudokuGenerator;
-import model.domain.SudokuGrid;
-import model.domain.RunFrozenBuffs;
-import model.domain.RunLevelState;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import javafx.fxml.*;
+import javafx.scene.control.*;
+import javafx.scene.image.*;
+import javafx.scene.layout.*;
+import javafx.scene.*;
+import javafx.scene.input.*;
+import view.manager.*;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
+import javafx.stage.*;
+import javafx.geometry.*;
+import model.service.*;
+import model.db.*;
+import model.domain.*;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import view.manager.BackgroundManager;
-import view.manager.EnemySpriteManager;
-import view.manager.PlayerSpriteManager;
-import view.manager.CursorManager;
-import view.manager.CharacterSelectionManager;
-import view.manager.ItemSelectionManager;
-import view.manager.SudokuUIManager;
-import view.manager.GameInputManager;
-import view.manager.HudManager;
-import view.manager.EndGameManager;
-import view.util.StageUtils;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
+import view.util.*;
+ 
 
 public class GameController {
     
@@ -53,7 +26,6 @@ public class GameController {
     @FXML private AnchorPane gameContentPane;
     @FXML private Label levelLabel;
     @FXML private Label difficultyLabel;
-    @FXML private Button menuButton;
     @FXML private Button skipButton;
     @FXML private Button itemSelectionButton;
     @FXML private ImageView characterSpriteView;
@@ -77,8 +49,6 @@ public class GameController {
     private VBox selectedCellVBox = null;
     private int selectedRow = -1;
     private int selectedCol = -1;
-    @SuppressWarnings("unused")
-    private Integer lastHighlightedNumber = null;
     private int currentLevel = 1;
     private int totalLevels = 10;
     private final GameDataService gameDataService = new GameDataService(DatabaseManager.getInstance());
@@ -97,6 +67,9 @@ public class GameController {
     private final GameInputManager gameInputManager = new GameInputManager();
     private final HudManager hudManager = new HudManager();
     private final EndGameManager endGameManager = new EndGameManager();
+    private final SudokuHighlightManager sudokuHighlightManager = new SudokuHighlightManager(GRID_SIZE, cellLabels, sudokuCells);
+    private final LayoutBindingManager layoutBindingManager = new LayoutBindingManager();
+    private InGameSettingsManager settingsManager;
     private boolean firstErrorProtectionActive = false;
     private boolean firstErrorProtectionUsed = false;
     private boolean noteModeActive = false;
@@ -106,6 +79,11 @@ public class GameController {
 
     public void setRunService(RunService runService) {
         this.runService = runService;
+        try {
+            if (inventorySlotsUIManager != null) {
+                initializeInventoryInteraction();
+            }
+        } catch (Exception ignore) {}
     }
     
     @FXML private ImageView headerImageView;
@@ -122,30 +100,30 @@ public class GameController {
                 backgroundImageView.setPickOnBounds(true);
                 backgroundImageView.setOnMouseClicked(e -> {
                     clearSelectedCell();
-                    clearNumberHighlights();
-                    clearRegionHighlights();
+                    sudokuHighlightManager.clearNumberHighlights();
+                    sudokuHighlightManager.clearRegionHighlights();
                 });
             }
             if (mainGameArea != null) {
                 mainGameArea.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
                     Node target = (Node) e.getTarget();
-                    boolean outsideSudoku = (sudokuGridContainer != null && !isDescendantOf(target, sudokuGridContainer));
-                    boolean onInputs = (inputControlHBox != null && isDescendantOf(target, inputControlHBox))
-                                     || (inventorySlotsHBox != null && isDescendantOf(target, inventorySlotsHBox));
+                    boolean outsideSudoku = (sudokuGridContainer != null && !view.util.NodeUtils.isDescendantOf(target, sudokuGridContainer));
+                    boolean onInputs = (inputControlHBox != null && view.util.NodeUtils.isDescendantOf(target, inputControlHBox))
+                                     || (inventorySlotsHBox != null && view.util.NodeUtils.isDescendantOf(target, inventorySlotsHBox));
                     if (outsideSudoku && !onInputs) {
                         clearSelectedCell();
-                        clearNumberHighlights();
-                        clearRegionHighlights();
+                        sudokuHighlightManager.clearNumberHighlights();
+                        sudokuHighlightManager.clearRegionHighlights();
                     }
                 });
                 if (mainGameArea.getScene() != null) {
-                    bindToSceneSize(mainGameArea.getScene());
+                    layoutBindingManager.bindToSceneSize(mainGameArea.getScene(), mainGameArea, headerImageView, footerImageView);
                 } else {
                     mainGameArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
-                        if (newScene != null) bindToSceneSize(newScene);
+                        if (newScene != null) layoutBindingManager.bindToSceneSize(newScene, mainGameArea, headerImageView, footerImageView);
                     });
                 }
-                bindBackgroundToMainArea();
+                layoutBindingManager.bindBackgroundToMainArea(mainGameArea, backgroundImageView, gameContentPane);
             }
             backgroundManager.preloadAll();
             
@@ -155,39 +133,57 @@ public class GameController {
         
         buildSudokuGrid();
 
-        setupKeyboardShortcuts();
+        gameInputManager.setupKeyboardShortcuts(
+                mainGameArea,
+                this::handleNumberInput,
+                this::toggleNoteMode,
+                this::handleClearCell
+        );
 
-        if (menuButton != null) {
-            menuButton.setText("Salva ed esci");
-            menuButton.setOnAction(e -> saveAndExitToHome());
-        }
+        settingsManager = new InGameSettingsManager(
+                modalContainer,
+                mainGameArea,
+                () -> {
+                    try {
+                        if (runService != null && runService.getCurrentRun() != null) {
+                            if (sudokuEngine != null && runService.getCurrentRun().getCurrentLevelState() != null) {
+                                int[][] ug = sudokuEngine.getUserGrid();
+                                String data = model.domain.RunLevelState.convertGridToString(ug);
+                                runService.getCurrentRun().getCurrentLevelState().setUserGridData(data);
+                            }
+                            runService.save();
+                        }
+                        try { if (settingsManager != null) settingsManager.hide(); else ModalUtils.hideAndClear(modalContainer); } catch (Exception ignore) {}
+                        javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/HomeScreen.fxml"));
+                        javafx.scene.Parent root = loader.load();
+                        Stage stage = (Stage) mainGameArea.getScene().getWindow();
+                        StageUtils.setSceneRoot(stage, root);
+                    } catch (Exception e) {
+                        System.err.println("Errore nel salvataggio e ritorno alla Home: " + e.getMessage());
+                    }
+                },
+                () -> {
+                    try { if (settingsManager != null) settingsManager.hide(); else ModalUtils.hideAndClear(modalContainer); } catch (Exception ignore) {}
+                    boolean isFinal = currentLevel >= totalLevels;
+                    boolean isBoss = false;
+                    try { if (gameDataService != null) isBoss = gameDataService.isBossLevel(currentLevel); } catch (Exception ignore) {}
+                    hideGameUIForSelection(true);
+                    if (isFinal || isBoss) {
+                        completeLevelAndAdvance();
+                    } else {
+                        showItemSelectionModal();
+                    }
+                },
+                () -> setGameInteractivity(false),
+                () -> setGameInteractivity(true)
+        );
 
         if (skipButton != null) {
             skipButton.setOnAction(e -> {
-                hideGameUIForSelection(true);
-                showItemSelectionModal();
+                setGameInteractivity(false);
+                if (settingsManager != null) settingsManager.show();
             });
-            skipButton.setOnMouseEntered(e -> {
-                if (skipButton.getGraphic() instanceof ImageView) {
-                    ImageView iv = (ImageView) skipButton.getGraphic();
-                    javafx.scene.effect.Glow glow = new javafx.scene.effect.Glow(0.35);
-                    javafx.scene.effect.DropShadow shadow = new javafx.scene.effect.DropShadow();
-                    shadow.setRadius(6.0);
-                    shadow.setSpread(0.1);
-                    shadow.setColor(javafx.scene.paint.Color.web("#ffffff88"));
-                    iv.setEffect(new javafx.scene.effect.Blend(
-                        javafx.scene.effect.BlendMode.SRC_OVER,
-                        glow,
-                        shadow
-                    ));
-                }
-            });
-            skipButton.setOnMouseExited(e -> {
-                if (skipButton.getGraphic() instanceof ImageView) {
-                    ImageView iv = (ImageView) skipButton.getGraphic();
-                    iv.setEffect(null);
-                }
-            });
+            hudManager.setupSkipButtonHoverEffects(skipButton);
         }
 
         int count = gameDataService.getTotalLevels();
@@ -214,8 +210,8 @@ public class GameController {
                 applyPuzzleToUI(grid);
                 updateLevelAndDifficultyUI();
                 spawnEnemyForCurrentLevel();
-                renderSelectedBuffs();
-                renderBuffInfo();
+                hudManager.renderSelectedBuffs(selectedBuffsHBox);
+                hudManager.renderBuffInfo(buffInfoBox, gameDataService);
             } catch (Exception e) {
                 System.err.println("Errore nel ripristino griglia utente: " + e.getMessage());
             }
@@ -248,181 +244,21 @@ public class GameController {
                 Object tgt = e.getTarget();
                 if (tgt instanceof Node) {
                     Node n = (Node) tgt;
-                    boolean insideGrid = isDescendantOf(n, sudokuGridContainer);
-                    boolean insideControls = isDescendantOf(n, inputControlHBox) || isDescendantOf(n, inventorySlotsHBox);
+                    boolean insideGrid = view.util.NodeUtils.isDescendantOf(n, sudokuGridContainer);
+                    boolean insideControls = view.util.NodeUtils.isDescendantOf(n, inputControlHBox) || view.util.NodeUtils.isDescendantOf(n, inventorySlotsHBox);
                     if (!insideGrid && !insideControls) {
                         clearSelectedCell();
-                        clearNumberHighlights();
+                        sudokuHighlightManager.clearNumberHighlights();
                     }
                 } else {
                     clearSelectedCell();
-                    clearNumberHighlights();
+                    sudokuHighlightManager.clearNumberHighlights();
                 }
             });
         }
     }
 
-    private void setupKeyboardShortcuts() {
-        if (mainGameArea == null) return;
-        Runnable attach = () -> {
-            if (mainGameArea.getScene() == null) return;
-            mainGameArea.setFocusTraversable(true);
-            mainGameArea.requestFocus();
-            mainGameArea.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
-                int value = mapKeyToDigit(e.getCode());
-                if (value >= 1 && value <= 9) {
-                    handleNumberInput(value);
-                    e.consume();
-                    return;
-                }
-                if (e.getCode() == KeyCode.N) {
-                    toggleNoteMode();
-                    e.consume();
-                    return;
-                }
-                if (e.getCode() == KeyCode.BACK_SPACE || e.getCode() == KeyCode.DELETE || e.getCode() == KeyCode.DIGIT0 || e.getCode() == KeyCode.NUMPAD0) {
-                    handleClearCell();
-                    e.consume();
-                }
-            });
-        };
-        if (mainGameArea.getScene() != null) {
-            attach.run();
-        } else {
-            mainGameArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
-                if (newScene != null) attach.run();
-            });
-        }
-    }
-
-    private int mapKeyToDigit(KeyCode code) {
-        switch (code) {
-            case DIGIT1: case NUMPAD1: return 1;
-            case DIGIT2: case NUMPAD2: return 2;
-            case DIGIT3: case NUMPAD3: return 3;
-            case DIGIT4: case NUMPAD4: return 4;
-            case DIGIT5: case NUMPAD5: return 5;
-            case DIGIT6: case NUMPAD6: return 6;
-            case DIGIT7: case NUMPAD7: return 7;
-            case DIGIT8: case NUMPAD8: return 8;
-            case DIGIT9: case NUMPAD9: return 9;
-            default: return 0;
-        }
-    }
-
-    private void bindToSceneSize(javafx.scene.Scene scene) {
-        if (headerImageView != null) {
-            headerImageView.setPreserveRatio(false);
-            headerImageView.setSmooth(true);
-            headerImageView.setFitWidth(scene.getWidth());
-        }
-        if (footerImageView != null) {
-            footerImageView.setPreserveRatio(false);
-            footerImageView.setSmooth(true);
-            footerImageView.setFitWidth(scene.getWidth());
-        }
-
-        scene.widthProperty().addListener((o, ov, nv) -> {
-            double w = nv.doubleValue();
-            if (headerImageView != null) headerImageView.setFitWidth(w);
-            if (footerImageView != null) footerImageView.setFitWidth(w);
-        });
-
-        if (mainGameArea != null) {
-            if (headerImageView != null && footerImageView != null) {
-                mainGameArea.prefHeightProperty().bind(scene.heightProperty()
-                    .subtract(headerImageView.fitHeightProperty())
-                    .subtract(footerImageView.fitHeightProperty()));
-            } else {
-                mainGameArea.prefHeightProperty().bind(scene.heightProperty().subtract(220.0));
-            }
-            mainGameArea.minHeightProperty().bind(mainGameArea.prefHeightProperty());
-            mainGameArea.maxHeightProperty().bind(mainGameArea.prefHeightProperty());
-        }
-    }
-
-    private void bindBackgroundToMainArea() {
-        if (backgroundImageView == null || mainGameArea == null) return;
-        backgroundImageView.setPreserveRatio(false);
-        backgroundImageView.setSmooth(true);
-        Runnable apply = () -> {
-            double w = mainGameArea.getWidth();
-            double h = mainGameArea.getHeight();
-            if (w > 0 && h > 0) {
-                backgroundImageView.setFitWidth(w);
-                backgroundImageView.setFitHeight(h);
-            }
-        };
-        apply.run();
-        mainGameArea.widthProperty().addListener((o, ov, nv) -> apply.run());
-        mainGameArea.heightProperty().addListener((o, ov, nv) -> apply.run());
-        mainGameArea.layoutBoundsProperty().addListener((o, ov, nv) -> apply.run());
-
-        if (gameContentPane != null) {
-            gameContentPane.prefHeightProperty().bind(mainGameArea.heightProperty());
-            gameContentPane.minHeightProperty().bind(gameContentPane.prefHeightProperty());
-            gameContentPane.maxHeightProperty().bind(gameContentPane.prefHeightProperty());
-        }
-    }
-
-
-    private void renderSelectedBuffs() {
-        try {
-            String nick = model.service.SessionService.getCurrentNick();
-            if (nick == null || nick.isEmpty() || selectedBuffsHBox == null) return;
-            var user = new model.dao.UserDAO(model.db.DatabaseManager.getInstance()).getUserByNick(nick);
-            if (user == null) return;
-            Map<String, Integer> buffs = user.getPermanentBuffLevels();
-            selectedBuffsHBox.getChildren().clear();
-            for (Map.Entry<String, Integer> e : buffs.entrySet()) {
-                if (e.getValue() != null && e.getValue() > 0) {
-                    String path = mapBuffIcon(e.getKey());
-                    if (path != null) {
-                        ImageView badge = new ImageView(new Image(getClass().getResourceAsStream(path), 28, 28, true, true));
-                        selectedBuffsHBox.getChildren().add(badge);
-                    }
-                }
-            }
-        } catch (Exception ignore) {}
-    }
-
-    private String mapBuffIcon(String id) {
-        if (id == null) return null;
-        switch (id) {
-            case "EXTRA_LIVES": return "/assets/icons/buffs/extra_lives.png";
-            case "FIRST_ERROR_PROTECT": return "/assets/icons/buffs/first_error_protection.png";
-            case "STARTING_HINTS": return "/assets/icons/buffs/extra_hints.png";
-            case "POINT_BONUS": return "/assets/icons/buffs/point_bonus.png";
-            case "INVENTORY_CAPACITY": return "/assets/icons/buffs/inventory_capacity.png";
-            case "STARTING_CELLS": return "/assets/icons/buffs/starting_cells.png";
-            default: return null;
-        }
-    }
-
-    private void renderBuffInfo() {
-        try {
-            if (buffInfoBox == null) return;
-            String id = model.service.SessionService.getLastSelectedBuff();
-            buffInfoBox.getChildren().clear();
-            if (id == null || id.isEmpty()) return;
-            javafx.scene.control.Label name = new javafx.scene.control.Label(id.replace('_',' '));
-            name.getStyleClass().add("heading-small");
-            int level = 1;
-            try {
-                String nick = model.service.SessionService.getCurrentNick();
-                if (nick != null) {
-                    var user = new model.dao.UserDAO(model.db.DatabaseManager.getInstance()).getUserByNick(nick);
-                    if (user != null) level = user.getBuffLevel(id);
-                }
-            } catch (Exception ignore) {}
-            double value = new model.service.GameDataService(model.db.DatabaseManager.getInstance())
-                    .getBuffLevelData(id, Math.max(level,1))
-                    .getOrDefault("value", 0).doubleValue();
-            javafx.scene.control.Label desc = new javafx.scene.control.Label("Level " + Math.max(level,1) + " • Value " + value);
-            desc.getStyleClass().add("hint-label");
-            buffInfoBox.getChildren().addAll(name, desc);
-        } catch (Exception ignore) {}
-    }
+    
 
     
     private void buildSudokuGrid() {
@@ -447,34 +283,10 @@ public class GameController {
     
     
     private void handleCellClick(int r, int c) {
-        clearRegionHighlights();
-        clearNumberHighlights();
-
-        if (selectedCellVBox != null) {
-            selectedCellVBox.getStyleClass().remove("selected-cell");
-            selectedCellVBox.getStyleClass().add("unselected-cell");
-        }
-        
-        VBox newSelection = sudokuCells[r][c];
-        newSelection.getStyleClass().remove("unselected-cell");
-        newSelection.getStyleClass().add("selected-cell");
-
-        selectedCellVBox = newSelection;
+        selectedCellVBox = sudokuUIManager.selectCell(sudokuCells, r, c, selectedCellVBox);
         selectedRow = r;
         selectedCol = c;
-
-        applyRegionHighlights(r, c);
-
-        Label clickedLbl = cellLabels[r][c];
-        if (clickedLbl != null && clickedLbl.isVisible()) {
-            String t = clickedLbl.getText();
-            if (t != null && !t.isEmpty()) {
-                try {
-                    int v = Integer.parseInt(t);
-                    highlightMatchingNumbersStrong(v);
-                } catch (NumberFormatException ignore) { }
-            }
-        }
+        sudokuUIManager.refreshHighlightsAfterSelection(r, c, cellLabels, sudokuHighlightManager);
         
     }
     
@@ -483,52 +295,62 @@ public class GameController {
     private void toggleNoteMode() {
         noteModeActive = !noteModeActive;
         gameInputManager.setNoteModeActive(noteModeActive);
-        System.out.println("Note Mode " + (noteModeActive ? "ON" : "OFF"));
-        clearNumberHighlights();
+        sudokuHighlightManager.clearNumberHighlights();
     }
 
     private void handleClearCell() {
         if (selectedRow == -1 || selectedCol == -1 || sudokuEngine == null) return;
-        clearNumberHighlights();
+        sudokuHighlightManager.clearNumberHighlights();
 
         GridPane ng = noteGrids[selectedRow][selectedCol];
         if (ng != null && ng.isVisible()) {
             sudokuEngine.clearNotes(selectedRow, selectedCol);
-            ng.setVisible(false);
-            for (int k = 0; k < GRID_SIZE; k++) {
-                if (noteLabels[selectedRow][selectedCol][k] != null) {
-                    noteLabels[selectedRow][selectedCol][k].setVisible(false);
-                }
-            }
+            sudokuUIManager.hideNotes(selectedRow, selectedCol, noteLabels, noteGrids);
             return;
         }
 
         Label lbl = cellLabels[selectedRow][selectedCol];
         if (lbl != null && lbl.isVisible() && lbl.getStyleClass().contains("user-number-error")) {
             sudokuEngine.clearCell(selectedRow, selectedCol);
-            lbl.setText("");
-            lbl.setVisible(false);
-            lbl.getStyleClass().remove("user-number-error");
-            refreshNumberButtonsAvailability();
+            sudokuUIManager.clearErrorLabel(selectedRow, selectedCol, cellLabels);
+            gameInputManager.refreshNumberButtonsAvailability(cellLabels);
         }
     }
     
-    @FXML
-    private void handleMenuClick() {
-        saveAndExitToHome();
-    }
-    
     private void showCharacterSelectionModal() {
+        try { view.manager.SoundManager.getInstance().fadeOutMusic(400); } catch (Exception ignore) {}
         characterSelectionManager.show(modalContainer, opt -> selectCharacterFromOption(opt));
+        try {
+            PauseTransition pt = new PauseTransition(Duration.millis(300));
+            pt.setOnFinished(ev -> { try { view.manager.SoundManager.getInstance().playCharacterSelection(); } catch (Exception ignore) {} });
+            pt.play();
+        } catch (Exception ignore) {}
     }
 
     @FXML
     private void handleItemSelectionClick() {
+        boolean isFinal = currentLevel >= totalLevels;
+        boolean isBoss = false;
+        try { if (gameDataService != null) isBoss = gameDataService.isBossLevel(currentLevel); } catch (Exception ignore) {}
         hideGameUIForSelection(true);
+        if (isFinal || isBoss) {
+            completeLevelAndAdvance();
+            return;
+        }
         showItemSelectionModal();
     }
     private void showItemSelectionModal() {
         if (modalContainer == null) return;
+        try {
+            boolean isLastLevel = (currentLevel >= totalLevels);
+            boolean isBoss = false;
+            try { if (gameDataService != null) isBoss = gameDataService.isBossLevel(currentLevel); } catch (Exception ignore) {}
+            if (isBoss || isLastLevel) {
+                return;
+            }
+        } catch (Exception ignore) {}
+        try { view.manager.SoundManager.getInstance().fadeOutMusic(400); } catch (Exception ignore) {}
+        try { view.manager.SoundManager.getInstance().playWinItemSelection(); } catch (Exception ignore) {}
         itemSelectionManager.show(modalContainer, this::onItemSelectedFromOption);
     }
 
@@ -555,26 +377,6 @@ public class GameController {
         }
     }
 
-    private void saveAndExitToHome() {
-        try {
-            if (runService != null && runService.getCurrentRun() != null) {
-                if (sudokuEngine != null && runService.getCurrentRun().getCurrentLevelState() != null) {
-                    int[][] ug = sudokuEngine.getUserGrid();
-                    String data = model.domain.RunLevelState.convertGridToString(ug);
-                    runService.getCurrentRun().getCurrentLevelState().setUserGridData(data);
-                }
-                runService.save();
-            }
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/view/HomeScreen.fxml"));
-            javafx.scene.Parent root = loader.load();
-            Stage stage = (Stage) mainGameArea.getScene().getWindow();
-            StageUtils.setSceneRoot(stage, root);
-        } catch (Exception e) {
-            System.err.println("Errore nel salvataggio e ritorno alla Home: " + e.getMessage());
-        }
-    }
-    
-
     private void selectCharacterFromOption(view.manager.CharacterSelectionManager.Option opt) {
         try {
             Image img = new Image(getClass().getResourceAsStream(opt.sprite));
@@ -588,10 +390,15 @@ public class GameController {
 
             hideGameUIForSelection(false);
             updateLevelAndDifficultyUI();
-            updateSkipButtonState();
+            hudManager.updateSkipButtonState(skipButton, gameDataService.isBossLevel(currentLevel), characterSelected);
 
             generateSudokuForCurrentLevel();
             spawnEnemyForCurrentLevel();
+
+            try {
+                String cat = backgroundManager.getLastSelectedCategory();
+                view.manager.SoundManager.getInstance().playLevelMusicForCategory(cat);
+            } catch (Exception ignore) {}
 
             int baseLives = gameDataService.getCharacterBaseLives(opt.id);
             if (baseLives < 0) baseLives = 0;
@@ -606,188 +413,125 @@ public class GameController {
     }
 
     private void applyThemeForCharacter(String characterId) {
-        if (mainGameArea == null) return;
-        mainGameArea.getStyleClass().remove("theme-crusader");
-        mainGameArea.getStyleClass().remove("theme-highwayman");
-        mainGameArea.getStyleClass().remove("theme-jester");
-        mainGameArea.getStyleClass().remove("theme-occultist");
-        mainGameArea.getStyleClass().remove("theme-plague-doctor");
-
-        String toAdd = null;
-        if ("CRUSADER".equalsIgnoreCase(characterId)) {
-            toAdd = "theme-crusader";
-        } else if ("HIGHWAYMAN".equalsIgnoreCase(characterId)) {
-            toAdd = "theme-highwayman";
-        } else if ("JESTER".equalsIgnoreCase(characterId)) {
-            toAdd = "theme-jester";
-        } else if ("OCCULTIST".equalsIgnoreCase(characterId)) {
-            toAdd = "theme-occultist";
-        } else if ("PLAGUEDOCTOR".equalsIgnoreCase(characterId) || "PLAGUE_DOCTOR".equalsIgnoreCase(characterId)) {
-            toAdd = "theme-plague-doctor";
-        }
-        if (toAdd != null) {
-            mainGameArea.getStyleClass().add(toAdd);
-            currentTheme = toAdd;
-        }
+        String added = hudManager.applyThemeForCharacter(mainGameArea, characterId);
+        currentTheme = added;
     }
 
-    private String pickEnemyForDifficulty(String difficultyTier) {
-        if (difficultyTier == null) return null;
-        String dirName = difficultyTier.toLowerCase();
-        List<String> all = listEnemyFiles(dirName);
-        if (all.isEmpty()) return null;
-        List<String> available = all.stream()
-            .map(name -> "/assets/enemies/" + dirName + "/" + name)
-            .filter(path -> !usedEnemyGlobal.contains(path))
-            .collect(Collectors.toList());
-        if (available.isEmpty()) {
-        System.err.println("No enemy available in difficulty '" + difficultyTier + "' not yet used in this run.");
-            return null;
-        }
-        String chosenPath = available.get(rng.nextInt(available.size()));
-        usedEnemyGlobal.add(chosenPath);
-        return chosenPath;
-    }
-
-    private List<String> listEnemyFiles(String difficultyDir) {
-        try {
-            URL url = getClass().getResource("/assets/enemies/" + difficultyDir);
-            if (url == null) return Collections.emptyList();
-            Path dir = Paths.get(url.toURI());
-            try (Stream<Path> stream = Files.list(dir)) {
-                return stream
-                    .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".png"))
-                    .map(p -> p.getFileName().toString())
-                    .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-        System.err.println("Unable to list enemy files for '" + difficultyDir + "': " + e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-    private String getDifficultyFallbackByLevel(int level) {
-        if (level >= 10) return "NIGHTMARE";
-        if (level >= 7) return "HARD";
-        if (level >= 4) return "MEDIUM";
-        return "EASY";
-    }
+    
 
     private void hideGameUIForSelection(boolean hide) {
-        hudManager.hideGameUIForSelection(hide, levelLabel, difficultyLabel, menuButton, characterSpriteView, enemySpriteView, sudokuGridContainer, livesHBox, inputControlHBox, inventorySlotsHBox, skipButton);
+        hudManager.hideGameUIForSelection(hide, levelLabel, difficultyLabel, characterSpriteView, enemySpriteView, sudokuGridContainer, livesHBox, inputControlHBox, inventorySlotsHBox, skipButton);
     }
 
     private void updateLevelAndDifficultyUI() {
         String difficulty = gameDataService.getBaseDifficultyByLevel(currentLevel);
         if (difficulty == null || "UNKNOWN".equalsIgnoreCase(difficulty)) {
-            difficulty = getDifficultyFallbackByLevel(currentLevel);
+            difficulty = gameDataService.getDifficultyFallbackByLevel(currentLevel);
         }
         hudManager.updateLevelAndDifficultyUI(levelLabel, difficultyLabel, currentLevel, difficulty);
     }
 
     private void spawnEnemyForCurrentLevel() {
-        String difficulty = (difficultyLabel != null) ? difficultyLabel.getText() : null;
-        if (difficulty == null || difficulty.isEmpty()) {
-            difficulty = gameDataService.getBaseDifficultyByLevel(currentLevel);
-            if (difficulty == null || "UNKNOWN".equalsIgnoreCase(difficulty)) {
-                difficulty = getDifficultyFallbackByLevel(currentLevel);
-            }
-        }
-        String enemySpritePath = pickEnemyForDifficulty(difficulty);
-        if (enemySpritePath != null && enemySpriteView != null) {
-            Image img = new Image(getClass().getResourceAsStream(enemySpritePath));
-            enemySpriteManager.applyTo(enemySpriteView, img, enemySpritePath);
-        } else if (enemySpriteView != null) {
-            enemySpriteView.setVisible(false);
-        }
+        enemySpriteManager.spawnForLevel(enemySpriteView, difficultyLabel, gameDataService, currentLevel, usedEnemyGlobal, rng);
     }
 
     private void completeLevelAndAdvance() {
         if (!characterSelected) {
             return;
         }
-        if (currentLevel >= totalLevels) {
-            updateSkipButtonState();
-        System.out.println("Run completed: last level reached.");
-            return;
+        if (runService != null) {
+            try {
+                boolean isFinalLevel = false;
+                try {
+                    isFinalLevel = (currentLevel >= totalLevels);
+                } catch (Exception ignore) {}
+
+                if (isFinalLevel) {
+                    int remainingVisible = 0;
+                    try { if (inventorySlotsUIManager != null) remainingVisible = inventorySlotsUIManager.getVisibleItemCount(); } catch (Exception ignore) {}
+                    runService.endLevelWithRemainingOverride(true, remainingVisible);
+                } else {
+                    runService.endLevel(true);
+                }
+            } catch (Exception e) {
+                System.err.println("Errore nell'avanzamento livello: " + e.getMessage());
+            }
         }
         clearSelectedCell();
-        clearRegionHighlights();
-        clearNumberHighlights();
-        currentLevel++;
-        updateLevelAndDifficultyUI();
-        applyBackgroundForCurrentLevel();
-        generateSudokuForCurrentLevel();
-        spawnEnemyForCurrentLevel();
-        updateSkipButtonState();
-        System.out.println("Level " + currentLevel + " started (skip).");
+        sudokuHighlightManager.clearRegionHighlights();
+        sudokuHighlightManager.clearNumberHighlights();
+        try {
+            if (runService != null && runService.getCurrentRun() != null && runService.getCurrentRun().getCurrentLevelState() != null) {
+                currentLevel = runService.getCurrentRun().getCurrentLevelState().getCurrentLevel();
+                updateLevelAndDifficultyUI();
+                applyBackgroundForCurrentLevel();
+                sudokuEngine = runService.getCurrentEngine();
+                int[][] init = model.domain.RunLevelState.convertStringToGrid(runService.getCurrentRun().getCurrentLevelState().getInitialGridData());
+                sudokuUIManager.applyInitialGridToUI(init, GRID_SIZE, cellLabels, noteGrids);
+                spawnEnemyForCurrentLevel();
+                hudManager.updateSkipButtonState(skipButton, gameDataService.isBossLevel(currentLevel), characterSelected);
+            } else {
+                try { view.manager.SoundManager.getInstance().fadeOutMusic(400); } catch (Exception ignore) {}
+                hudManager.updateSkipButtonState(skipButton, gameDataService.isBossLevel(currentLevel), characterSelected);
+                try {
+                    hideGameUIForSelection(true);
+                    if (headerDimmer != null) headerDimmer.setVisible(true);
+                    if (footerDimmer != null) footerDimmer.setVisible(true);
+                    if (skipButton != null) skipButton.setVisible(false);
+                    model.service.PointService.ScoreBreakdown bd = null;
+                    try {
+                        if (runService != null) {
+                            bd = runService.getLastRunBreakdown();
+                        }
+                    } catch (Exception ignore) {}
+                    try { view.manager.SoundManager.getInstance().playWin(); } catch (Exception ignore) {}
+                    endGameManager.showVictory(modalContainer, bd);
+                } catch (Exception e) {
+                    System.err.println("Errore nel mostrare la schermata di vittoria: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Errore nel refresh UI livello: " + e.getMessage());
+        }
     }
 
     private void applyBackgroundForCurrentLevel() {
         try {
             boolean isBoss = gameDataService.isBossLevel(currentLevel);
-            Image img = backgroundManager.selectRandomUnique(isBoss);
-            if (img != null && backgroundImageView != null) {
-                backgroundImageView.setImage(img);
-            } else {
-        System.err.println("Background not available for level " + currentLevel + ".");
-            }
+            backgroundManager.applyRandomForLevel(backgroundImageView, isBoss);
+            try {
+                String cat = backgroundManager.getLastSelectedCategory();
+                view.manager.SoundManager.getInstance().playLevelMusicForCategory(cat);
+            } catch (Exception ignore) {}
         } catch (Exception e) {
         System.err.println("Error applying background: " + e.getMessage());
         }
     }
 
-    private void updateSkipButtonState() {
-        if (menuButton != null) {
-            boolean disable = !characterSelected || currentLevel >= totalLevels;
-            menuButton.setDisable(disable);
-        }
-    }
+    
 
     private void generateSudokuForCurrentLevel() {
         clearSelectedCell();
-        clearRegionHighlights();
-        clearNumberHighlights();
+        sudokuHighlightManager.clearRegionHighlights();
+        sudokuHighlightManager.clearNumberHighlights();
         RunFrozenBuffs frozen = new RunFrozenBuffs(Collections.emptyMap());
         SudokuGrid puzzle = sudokuGenerator.generateNewPuzzle(currentLevel, frozen);
         sudokuEngine = new model.engine.SudokuEngine(puzzle);
         applyPuzzleToUI(puzzle);
-        clearRegionHighlights();
-        clearNumberHighlights();
+        sudokuHighlightManager.clearRegionHighlights();
+        sudokuHighlightManager.clearNumberHighlights();
     }
 
     private void applyPuzzleToUI(SudokuGrid puzzle) {
-        int[][] initial = puzzle.getInitialGrid();
-        for (int r = 0; r < GRID_SIZE; r++) {
-            for (int c = 0; c < GRID_SIZE; c++) {
-                int v = initial[r][c];
-                if (v != 0) {
-                    cellLabels[r][c].setText(String.valueOf(v));
-                    cellLabels[r][c].setVisible(true);
-                    cellLabels[r][c].getStyleClass().remove("user-number-error");
-                    cellLabels[r][c].getStyleClass().remove("user-number-correct");
-                    if (!cellLabels[r][c].getStyleClass().contains("initial-number")) {
-                        cellLabels[r][c].getStyleClass().add("initial-number");
-                    }
-                    if (noteGrids[r][c] != null) noteGrids[r][c].setVisible(false);
-                } else {
-                    cellLabels[r][c].setText("");
-                    cellLabels[r][c].setVisible(false);
-                    cellLabels[r][c].getStyleClass().remove("initial-number");
-                    cellLabels[r][c].getStyleClass().remove("user-number-error");
-                    cellLabels[r][c].getStyleClass().remove("user-number-correct");
-                    if (noteGrids[r][c] != null) noteGrids[r][c].setVisible(false);
-                }
-            }
-        }
-        refreshNumberButtonsAvailability();
+        sudokuUIManager.applyPuzzleToUI(puzzle, GRID_SIZE, cellLabels, noteGrids);
+        gameInputManager.refreshNumberButtonsAvailability(cellLabels);
     }
 
     private void handleNumberInput(int value) {
         if (sudokuEngine == null) return;
 
         if (selectedRow == -1 || selectedCol == -1) {
-            highlightMatchingNumbersStrong(value);
+            sudokuHighlightManager.highlightMatchingNumbersStrong(value);
             return;
         }
 
@@ -796,14 +540,9 @@ public class GameController {
             String ct = currentLbl.getText();
             if (ct != null && !ct.isEmpty()) {
                 if (selectedCellVBox != null) {
-                    selectedCellVBox.getStyleClass().remove("selected-cell");
-                    if (!selectedCellVBox.getStyleClass().contains("unselected-cell")) {
-                        selectedCellVBox.getStyleClass().add("unselected-cell");
-                    }
+                    sudokuUIManager.clearSelectedCellStyle(selectedCellVBox);
                 }
-                clearRegionHighlights();
-                clearNumberHighlights();
-                highlightMatchingNumbersStrong(value);
+                sudokuUIManager.refreshHighlightsForNumberOnly(value, sudokuHighlightManager);
                 return;
             }
         }
@@ -812,47 +551,22 @@ public class GameController {
             if (!sudokuEngine.isInitialCell(selectedRow, selectedCol) && sudokuEngine.getCellValue(selectedRow, selectedCol) == 0) {
                 sudokuEngine.clearNotes(selectedRow, selectedCol);
                 sudokuEngine.toggleNote(selectedRow, selectedCol, value);
-                GridPane ng = noteGrids[selectedRow][selectedCol];
-                if (ng != null) {
-                    ng.setVisible(true);
-                    for (int k = 0; k < GRID_SIZE; k++) {
-                        if (noteLabels[selectedRow][selectedCol][k] != null) {
-                            noteLabels[selectedRow][selectedCol][k].setVisible(k == 2);
-                        }
-                    }
-                    noteLabels[selectedRow][selectedCol][2].setText(String.valueOf(value));
-                }
-                Label lbl = cellLabels[selectedRow][selectedCol];
-                if (lbl != null) {
-                    lbl.setText("");
-                    lbl.setVisible(false);
-                    lbl.getStyleClass().remove("user-number-error");
-                    lbl.getStyleClass().remove("user-number-correct");
-                }
-                refreshNumberButtonsAvailability();
+                sudokuUIManager.showNoteForValue(selectedRow, selectedCol, value, noteLabels, noteGrids, cellLabels);
+                gameInputManager.refreshNumberButtonsAvailability(cellLabels);
             }
             return;
         }
 
         boolean ok = sudokuEngine.insertValue(selectedRow, selectedCol, value);
-        Label lbl = cellLabels[selectedRow][selectedCol];
         if (ok) {
-            if (lbl != null) {
-                lbl.setText(String.valueOf(value));
-                lbl.setVisible(true);
-                lbl.getStyleClass().remove("initial-number");
-                lbl.getStyleClass().remove("user-number-error");
-                if (!lbl.getStyleClass().contains("user-number-correct")) {
-                    lbl.getStyleClass().add("user-number-correct");
-                }
-            }
-            GridPane ng = noteGrids[selectedRow][selectedCol];
-            if (ng != null) ng.setVisible(false);
-            clearNumberHighlights();
-            clearRegionHighlights();
-            applyRegionHighlights(selectedRow, selectedCol);
-            highlightMatchingNumbersStrong(value);
+            sudokuUIManager.applyUserCorrect(selectedRow, selectedCol, value, cellLabels, noteGrids);
+            try { view.manager.SoundManager.getInstance().playCorrect(); } catch (Exception ignore) {}
+            sudokuHighlightManager.clearNumberHighlights();
+            sudokuHighlightManager.clearRegionHighlights();
+            sudokuHighlightManager.applyRegionHighlights(selectedRow, selectedCol);
+            sudokuHighlightManager.highlightMatchingNumbersStrong(value);
             if (sudokuEngine.checkWin()) {
+                try { view.manager.SoundManager.getInstance().fadeOutMusic(300); } catch (Exception ignore) {}
                 boolean isBoss = gameDataService.isBossLevel(currentLevel);
                 if (isBoss) {
                     completeLevelAndAdvance();
@@ -863,25 +577,16 @@ public class GameController {
             }
         } else {
             if (!sudokuEngine.isInitialCell(selectedRow, selectedCol)) {
-                if (lbl != null) {
-                    lbl.setText(String.valueOf(value));
-                    lbl.setVisible(true);
-                    lbl.getStyleClass().remove("initial-number");
-                    lbl.getStyleClass().remove("user-number-correct");
-                    if (!lbl.getStyleClass().contains("user-number-error")) {
-                        lbl.getStyleClass().add("user-number-error");
-                    }
-                }
-                GridPane ng = noteGrids[selectedRow][selectedCol];
-                if (ng != null) ng.setVisible(false);
-                clearNumberHighlights();
-                clearRegionHighlights();
-                applyRegionHighlights(selectedRow, selectedCol);
-                highlightMatchingNumbersStrong(value);
+                sudokuUIManager.applyUserError(selectedRow, selectedCol, value, cellLabels, noteGrids);
+                try { view.manager.SoundManager.getInstance().playError(); } catch (Exception ignore) {}
+                sudokuHighlightManager.clearNumberHighlights();
+                sudokuHighlightManager.clearRegionHighlights();
+                sudokuHighlightManager.applyRegionHighlights(selectedRow, selectedCol);
+                sudokuHighlightManager.highlightMatchingNumbersStrong(value);
             }
             handleUserError();
         }
-        refreshNumberButtonsAvailability();
+        gameInputManager.refreshNumberButtonsAvailability(cellLabels);
     }
 
     private void applyCustomCursor() {
@@ -894,6 +599,15 @@ public class GameController {
 
     private void initializeInventoryInteraction() {
         if (inventorySlotsUIManager == null) return;
+        if (runService == null) {
+            inventorySlotsUIManager.setOnItemClicked((i, p, e) -> {
+                try {
+                    inventorySlotsUIManager.flashFailureOnSlot(i);
+                    view.manager.SoundManager.getInstance().playInvalidClick();
+                } catch (Exception ignore) {}
+            });
+            return;
+        }
         itemUseManager = new ItemUseManager(
                 () -> sudokuEngine,
                 livesUIManager,
@@ -906,181 +620,77 @@ public class GameController {
                 () -> initialMaxLives,
                 cellLabels,
                 noteGrids,
-                () -> { clearNumberHighlights(); clearRegionHighlights(); refreshNumberButtonsAvailability(); },
-                (r, c) -> applyRegionHighlights(r, c),
-                (value) -> highlightMatchingNumbersStrong(value),
+                () -> { sudokuHighlightManager.clearNumberHighlights(); sudokuHighlightManager.clearRegionHighlights(); gameInputManager.refreshNumberButtonsAvailability(cellLabels); },
+                (r, c) -> sudokuHighlightManager.applyRegionHighlights(r, c),
+                (value) -> sudokuHighlightManager.highlightMatchingNumbersStrong(value),
                 this::clearSelectedCell,
                 () -> completeLevelAndAdvance(),
-                () -> { hideGameUIForSelection(true); showItemSelectionModal(); }
+                () -> { hideGameUIForSelection(true); showItemSelectionModal(); },
+                this::showSudokuToast
         );
         inventorySlotsUIManager.setOnItemClicked(itemUseManager::handleItemClick);
     }
 
-    
+    private void showSudokuToast(String text, javafx.scene.paint.Color color) {
+        view.util.ToastUtils.showSudokuToast(sudokuAreaStack, text, color);
+    }
 
     private void handleUserError() {
         if (firstErrorProtectionActive && !firstErrorProtectionUsed) {
             firstErrorProtectionUsed = true;
-        System.out.println("First error protection active: no life lost.");
-            return;
+            try { if (runService != null) runService.registerErrorEvent("protezione primo errore attiva"); } catch (Exception ignore) {}
+        return;
         }
         if (livesUIManager != null && livesUIManager.getLives() > 0) {
+            if (livesUIManager.getLives() > 1) {
+                try { if (runService != null) runService.registerErrorEvent("errore dell'utente"); } catch (Exception ignore) {}
+            }
             livesUIManager.loseLifeWithAnimation();
             if (livesUIManager.getLives() <= 0) {
+                try { view.manager.SoundManager.getInstance().stopMusic(); } catch (Exception ignore) {}
                 hideGameUIForSelection(true);
                 if (headerDimmer != null) headerDimmer.setVisible(true);
                 if (footerDimmer != null) footerDimmer.setVisible(true);
                 if (skipButton != null) skipButton.setVisible(false);
-                endGameManager.showDefeat(modalContainer);
-            }
-        }
-    }
-
-
-    private void refreshNumberButtonsAvailability() {
-        int[] counts = new int[10];
-        for (int r = 0; r < GRID_SIZE; r++) {
-            for (int c = 0; c < GRID_SIZE; c++) {
-                if (cellLabels[r][c].isVisible()) {
-                    String t = cellLabels[r][c].getText();
-                    if (t != null && !t.isEmpty()) {
+                model.service.PointService.ScoreBreakdown bd = null;
+                try {
+                    if (runService != null) {
+                        int remainingVisible = 0;
                         try {
-                            int v = Integer.parseInt(t);
-                            if (v >= 1 && v <= 9) counts[v]++;
-                        } catch (NumberFormatException ignore) { }
+                            if (inventorySlotsUIManager != null) remainingVisible = inventorySlotsUIManager.getVisibleItemCount();
+                        } catch (Exception ignore) {}
+                        runService.endRunWithRemainingItems(false, remainingVisible);
+                        bd = runService.getLastRunBreakdown();
                     }
-                }
-            }
-        }
-        for (int i = 1; i <= 9; i++) {
-            boolean enabled = counts[i] < 9;
-            gameInputManager.setNumberEnabled(i, enabled);
-        }
-    }
-
-    private void clearNumberHighlights() {
-        for (int r = 0; r < GRID_SIZE; r++) {
-            for (int c = 0; c < GRID_SIZE; c++) {
-                VBox cell = sudokuCells[r][c];
-                if (cell != null) {
-                    cell.getStyleClass().remove("number-highlight");
-                    cell.getStyleClass().remove("match-number-strong");
-                }
-            }
-        }
-        lastHighlightedNumber = null;
-    }
-
-    @SuppressWarnings("unused")
-    private void highlightNumbers(int value) {
-        clearNumberHighlights();
-
-        for (int r = 0; r < GRID_SIZE; r++) {
-            for (int c = 0; c < GRID_SIZE; c++) {
-                Label lbl = cellLabels[r][c];
-                if (lbl != null && lbl.isVisible()) {
-                    String t = lbl.getText();
-                    if (t != null && !t.isEmpty()) {
-                        try {
-                            int v = Integer.parseInt(t);
-                            if (v == value) {
-                                VBox cell = sudokuCells[r][c];
-                                if (cell != null && !cell.getStyleClass().contains("number-highlight")) {
-                                    cell.getStyleClass().add("number-highlight");
-                                }
-                            }
-                        } catch (NumberFormatException ignore) { }
-                    }
-                }
-            }
-        }
-        lastHighlightedNumber = value;
-    }
-
-    private void highlightMatchingNumbersStrong(int value) {
-        clearNumberHighlights();
-        for (int r = 0; r < GRID_SIZE; r++) {
-            for (int c = 0; c < GRID_SIZE; c++) {
-                Label lbl = cellLabels[r][c];
-                if (lbl != null && lbl.isVisible()) {
-                    String t = lbl.getText();
-                    if (t != null && !t.isEmpty()) {
-                        try {
-                            int v = Integer.parseInt(t);
-                            if (v == value) {
-                                VBox cell = sudokuCells[r][c];
-                                if (cell != null && !cell.getStyleClass().contains("match-number-strong")) {
-                                    cell.getStyleClass().add("match-number-strong");
-                                }
-                            }
-                        } catch (NumberFormatException ignore) { }
-                    }
-                }
-            }
-        }
-        lastHighlightedNumber = value;
-    }
-
-    private void clearRegionHighlights() {
-        for (int r = 0; r < GRID_SIZE; r++) {
-            for (int c = 0; c < GRID_SIZE; c++) {
-                VBox cell = sudokuCells[r][c];
-                if (cell != null) {
-                    cell.getStyleClass().remove("peer-highlight");
-                }
+                } catch (Exception ignore) {}
+                try { view.manager.SoundManager.getInstance().playLoss(); } catch (Exception ignore) {}
+                endGameManager.showDefeat(modalContainer, bd);
             }
         }
     }
 
-    private void applyRegionHighlights(int r, int c) {
-        for (int cc = 0; cc < GRID_SIZE; cc++) {
-            if (cc == c) continue;
-            VBox cell = sudokuCells[r][cc];
-            if (cell != null && !cell.getStyleClass().contains("peer-highlight")) {
-                cell.getStyleClass().add("peer-highlight");
-            }
-        }
-        for (int rr = 0; rr < GRID_SIZE; rr++) {
-            if (rr == r) continue;
-            VBox cell = sudokuCells[rr][c];
-            if (cell != null && !cell.getStyleClass().contains("peer-highlight")) {
-                cell.getStyleClass().add("peer-highlight");
-            }
-        }
-        int boxStartR = (r / 3) * 3;
-        int boxStartC = (c / 3) * 3;
-        for (int rr = boxStartR; rr < boxStartR + 3; rr++) {
-            for (int cc = boxStartC; cc < boxStartC + 3; cc++) {
-                if (rr == r && cc == c) continue;
-                VBox cell = sudokuCells[rr][cc];
-                if (cell != null && !cell.getStyleClass().contains("peer-highlight")) {
-                    cell.getStyleClass().add("peer-highlight");
-                }
-            }
-        }
-    }
+
 
     private void clearSelectedCell() {
         if (selectedCellVBox != null) {
-            selectedCellVBox.getStyleClass().remove("selected-cell");
-            if (!selectedCellVBox.getStyleClass().contains("unselected-cell")) {
-                selectedCellVBox.getStyleClass().add("unselected-cell");
-            }
+            sudokuUIManager.clearSelectedCellStyle(selectedCellVBox);
             selectedCellVBox = null;
         }
         selectedRow = -1;
         selectedCol = -1;
     }
 
-    private boolean isDescendantOf(Node node, Node ancestor) {
-        if (node == null || ancestor == null) return false;
-        Node cur = node;
-        while (cur != null) {
-            if (cur == ancestor) return true;
-            cur = cur.getParent();
-        }
-        return false;
+    private void setGameInteractivity(boolean enabled) {
+        try {
+            if (sudokuGridContainer != null) sudokuGridContainer.setDisable(!enabled);
+            if (inputControlHBox != null) inputControlHBox.setMouseTransparent(!enabled);
+            if (gameInputManager != null) gameInputManager.setInteractivity(enabled);
+            if (inventorySlotsHBox != null) inventorySlotsHBox.setDisable(!enabled);
+            if (skipButton != null) skipButton.setMouseTransparent(!enabled);
+            if (itemSelectionButton != null) itemSelectionButton.setDisable(!enabled);
+            if (enabled) {
+                gameInputManager.setNoteModeActive(noteModeActive);
+            }
+        } catch (Exception ignore) {}
     }
-
-
 }

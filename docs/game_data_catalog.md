@@ -89,5 +89,24 @@ The final total score (Base Points + Bonuses) is subject to a percentage increas
 | :--- | :--- | :--- | :--- |
 | **POINT_BONUS** | User's frozen buff level (1, 2, or 3). | +10%, +20%, or +33% | Increase the total score by the corresponding percentage. |
 
----
+
+#### 4. Score Item Usage
+
+The **SCORE_ITEM** grants immediate points at the moment of use based on the current level.
+
+- Logic: On each use at Level `N`, add **N × 10 Points** directly to the final score calculation.
+- Stacking: Uses across different levels stack additively.
+
+Examples:
+- Use at Level 5 → **+50 Points**.
+- Use at Level 5 and Level 8 → **+130 Points** in total.
+
+*Formula for Score Item points:* $\sum_{\text{each use at level } N} (N \times 10)$
+
+| Use Case | Level(s) | Calculation | Points Added |
+| :--- | :--- | :--- | :--- |
+| Single use | 5 | 5 × 10 | **+50 Points** |
+| Double use | 5, 8 | 5 × 10 + 8 × 10 | **+130 Points** |
+| Single use | 10 (Final Boss) | 10 × 10 | **+100 Points** |
+
 

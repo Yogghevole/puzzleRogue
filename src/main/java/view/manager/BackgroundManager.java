@@ -1,10 +1,9 @@
 package view.manager;
 
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,6 +22,7 @@ public class BackgroundManager {
     private final Set<String> usedLevels = new HashSet<>();
     private final Set<String> usedBoss = new HashSet<>();
     private final Random rng = new Random();
+    private String lastSelectedPath;
 
     public void preloadAll() {
         try {
@@ -42,7 +42,7 @@ public class BackgroundManager {
                     loaded++;
                 }
             }
-            LOG.log(Level.INFO, "Background preload completed: {0} images (levels={1}, boss={2})",
+            LOG.log(Level.FINE, "Background preload completed: {0} images (levels={1}, boss={2})",
                     new Object[]{loaded, cacheLevels.size(), cacheBoss.size()});
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Error preloading backgrounds: {0}", e.getMessage());
@@ -65,19 +65,20 @@ public class BackgroundManager {
 
         String pick = available.get(rng.nextInt(available.size()));
         used.add(pick);
+        lastSelectedPath = pick;
         return cache.get(pick);
     }
 
     public void resetRun() {
         usedLevels.clear();
         usedBoss.clear();
-        LOG.log(Level.INFO, "BackgroundManager reset: used pool cleared");
+        LOG.log(Level.FINE, "BackgroundManager reset: used pool cleared");
     }
 
     public void clearCache() {
         cacheLevels.clear();
         cacheBoss.clear();
-        LOG.log(Level.INFO, "BackgroundManager cache cleared");
+        LOG.log(Level.FINE, "BackgroundManager cache cleared");
     }
 
     private List<String> listBackgroundFiles(String basePath) {
@@ -94,5 +95,22 @@ public class BackgroundManager {
             LOG.log(Level.SEVERE, "Error listing {0}: {1}", new Object[]{basePath, e.getMessage()});
             return Collections.emptyList();
         }
+    }
+
+    public void applyRandomForLevel(ImageView backgroundImageView, boolean boss) {
+        if (backgroundImageView == null) return;
+        Image img = selectRandomUnique(boss);
+        if (img != null) {
+            backgroundImageView.setImage(img);
+        }
+    }
+
+    public String getLastSelectedCategory() {
+        String p = (lastSelectedPath == null) ? "" : lastSelectedPath.toLowerCase();
+        if (p.contains("/boss/")) return "boss";
+        if (p.contains("cove")) return "cove";
+        if (p.contains("warrens")) return "warrens";
+        if (p.contains("weald")) return "weald";
+        return "levels";
     }
 }

@@ -22,8 +22,6 @@
                     <Label fx:id="difficultyLabel" text="DIFFICULTY: EASY" styleClass="difficulty-label" />
                 </VBox>
                 
-                <Button fx:id="menuButton" AnchorPane.topAnchor="38.0" AnchorPane.rightAnchor="110.0" 
-                        onAction="#handleMenuClick" text="Salva ed esci" styleClass="menu-button" focusTraversable="false"/>
 
                 <Button fx:id="itemSelectionButton" AnchorPane.topAnchor="38.0" AnchorPane.rightAnchor="110.0"
                         onAction="#handleItemSelectionClick" styleClass="menu-button" focusTraversable="false"

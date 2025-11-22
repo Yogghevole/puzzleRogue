@@ -3,12 +3,9 @@ package view.manager;
 import javafx.geometry.Pos;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Consumer;
 import view.util.ModalUtils;
 
@@ -36,6 +33,22 @@ public class ItemSelectionManager {
 
     private static final String NO_ITEM_ICON = "/assets/icons/items/noItem.png";
 
+    private static final Map<String, String> ITEM_NAME_MAP = Map.of(
+        "HINT_ITEM", "Hint",
+        "LIFE_BOOST_ITEM", "Life Heal",
+        "SACRIFICE_ITEM", "Sacrifice",
+        "SCORE_ITEM", "Score Bonus",
+        "NO_ITEM", "No Item"
+    );
+
+    private static final Map<String, String> ITEM_DESC_MAP = Map.of(
+        "HINT_ITEM", "Reveal a correct cell",
+        "LIFE_BOOST_ITEM", "Heal one lost life",
+        "SACRIFICE_ITEM", "Trade life for 2 hints",
+        "SCORE_ITEM", "Increase score gains",
+        "NO_ITEM", ""
+    );
+
     public void show(StackPane modalContainer, Consumer<ItemOption> onSelect) {
         if (modalContainer == null) return;
         ModalUtils.show(modalContainer, ModalUtils.Type.DEFAULT);
@@ -52,6 +65,7 @@ public class ItemSelectionManager {
             glow,
             shadow
         ));
+        title.setTranslateY(-40);
 
         HBox row = new HBox();
         row.setAlignment(Pos.CENTER);
@@ -83,7 +97,6 @@ public class ItemSelectionManager {
         modalContainer.getChildren().clear();
         modalContainer.getChildren().add(container);
         StackPane.setAlignment(container, Pos.CENTER);
-        System.out.println("Show Item Selection after level.");
     }
 
     private StackPane buildPanel(ItemOption opt, Consumer<ItemOption> onSelect) {
@@ -91,7 +104,7 @@ public class ItemSelectionManager {
             getClass().getResourceAsStream("/assets/menu/items_selection.png")
         ));
         bg.setPreserveRatio(true);
-        bg.setFitHeight(450); 
+        bg.setFitHeight(560);
 
         ImageView icon = new ImageView(new Image(
             getClass().getResourceAsStream(opt.iconPath)
@@ -100,11 +113,44 @@ public class ItemSelectionManager {
         icon.setFitWidth(70);
         icon.setFitHeight(70);
 
-        VBox content = new VBox(icon);
+        javafx.scene.control.Label nameLabel = new javafx.scene.control.Label(ITEM_NAME_MAP.getOrDefault(opt.id, "Item"));
+        nameLabel.getStyleClass().add("item-name-label");
+        nameLabel.setTranslateY(-6);
+
+        javafx.scene.control.Label descLabel = new javafx.scene.control.Label(ITEM_DESC_MAP.getOrDefault(opt.id, ""));
+        descLabel.getStyleClass().add("item-desc-label");
+        descLabel.setWrapText(true);
+        descLabel.setTranslateY(6);
+        descLabel.setVisible(false);
+
+        VBox content = new VBox(nameLabel, icon, descLabel);
         content.setAlignment(Pos.CENTER);
+        content.setSpacing(8);
 
         StackPane panel = new StackPane(bg, content);
-        panel.setOnMouseClicked(e -> onSelect.accept(opt));
+        icon.setOnMouseClicked(e -> onSelect.accept(opt));
+        javafx.animation.PauseTransition hoverReveal = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(0.5));
+        hoverReveal.setOnFinished(ev -> descLabel.setVisible(true));
+
+        icon.setOnMouseEntered(e -> {
+            javafx.scene.effect.Glow glow = new javafx.scene.effect.Glow(0.6);
+            javafx.scene.effect.DropShadow shadow = new javafx.scene.effect.DropShadow();
+            shadow.setRadius(9.0);
+            shadow.setSpread(0.2);
+            shadow.setColor(javafx.scene.paint.Color.web("#ffffffaa"));
+            icon.setEffect(new javafx.scene.effect.Blend(
+                javafx.scene.effect.BlendMode.SRC_OVER,
+                glow,
+                shadow
+            ));
+            descLabel.setVisible(false);
+            hoverReveal.playFromStart();
+        });
+        icon.setOnMouseExited(e -> {
+            icon.setEffect(null);
+            hoverReveal.stop();
+            descLabel.setVisible(false);
+        });
         return panel;
     }
 }
