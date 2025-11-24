@@ -17,7 +17,7 @@ public class PlayerSpriteManager {
         } else {
             fit = 500.0;
         }
-        view.setFitHeight(fit);
+        view.setFitHeight(fit * 1.10);
         view.setVisible(true);
     }
 }

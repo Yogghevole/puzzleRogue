@@ -111,6 +111,8 @@ public class BackgroundManager {
         if (p.contains("cove")) return "cove";
         if (p.contains("warrens")) return "warrens";
         if (p.contains("weald")) return "weald";
+        if (p.contains("crypts")) return "crypts";
+        if (p.contains("town")) return "town";
         return "levels";
     }
 }

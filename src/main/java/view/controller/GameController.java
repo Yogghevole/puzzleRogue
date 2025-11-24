@@ -76,6 +76,7 @@ public class GameController {
     @SuppressWarnings("unused")
     private String currentTheme = null;
     private int initialMaxLives = 0;
+    private boolean characterSelectInProgress = false;
 
     public void setRunService(RunService runService) {
         this.runService = runService;
@@ -378,7 +379,17 @@ public class GameController {
     }
 
     private void selectCharacterFromOption(view.manager.CharacterSelectionManager.Option opt) {
+        if (characterSelectInProgress) return;
+        characterSelectInProgress = true;
         try {
+            try {
+                view.manager.SoundManager.getInstance().playCharacterSelectFor(opt.id, () -> {
+                    try {
+                        String cat = backgroundManager.getLastSelectedCategory();
+                        view.manager.SoundManager.getInstance().playLevelMusicForCategory(cat);
+                    } catch (Exception ignore2) {}
+                });
+            } catch (Exception ignore) {}
             Image img = new Image(getClass().getResourceAsStream(opt.sprite));
             playerSpriteManager.applyTo(characterSpriteView, img, opt.id);
             view.util.ModalUtils.hideAndClear(modalContainer);
@@ -395,10 +406,7 @@ public class GameController {
             generateSudokuForCurrentLevel();
             spawnEnemyForCurrentLevel();
 
-            try {
-                String cat = backgroundManager.getLastSelectedCategory();
-                view.manager.SoundManager.getInstance().playLevelMusicForCategory(cat);
-            } catch (Exception ignore) {}
+            
 
             int baseLives = gameDataService.getCharacterBaseLives(opt.id);
             if (baseLives < 0) baseLives = 0;
@@ -409,6 +417,8 @@ public class GameController {
             initialMaxLives = baseLives;
         } catch (Exception e) {
         System.err.println("Error setting selected character: " + e.getMessage());
+        } finally {
+            characterSelectInProgress = true;
         }
     }
 
@@ -501,7 +511,9 @@ public class GameController {
             backgroundManager.applyRandomForLevel(backgroundImageView, isBoss);
             try {
                 String cat = backgroundManager.getLastSelectedCategory();
-                view.manager.SoundManager.getInstance().playLevelMusicForCategory(cat);
+                if (characterSelected) {
+                    view.manager.SoundManager.getInstance().playLevelMusicForCategory(cat);
+                }
             } catch (Exception ignore) {}
         } catch (Exception e) {
         System.err.println("Error applying background: " + e.getMessage());

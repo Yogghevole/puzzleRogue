@@ -21,6 +21,7 @@ public class SoundManager {
     private Clip errorClip;
     private Clip lossClip;
     private Clip winClip;
+    private java.util.Map<String, Clip> charSelectClips = new java.util.HashMap<>();
     private Clip musicClip;
     private double sfxVolume = 0.5;
     private double musicVolume = 0.5;
@@ -142,6 +143,38 @@ public class SoundManager {
                 }
                 applyVolume(winClip, sfxVolume);
             }
+
+            loadCharacterSelectClip("CRUSADER", "/assets/sfx/char_selection/crusader.wav");
+            loadCharacterSelectClip("HIGHWAYMAN", "/assets/sfx/char_selection/highwayman.wav");
+            loadCharacterSelectClip("JESTER", "/assets/sfx/char_selection/jester.wav");
+            loadCharacterSelectClip("OCCULTIST", "/assets/sfx/char_selection/occultist.wav");
+            loadCharacterSelectClip("PLAGUEDOCTOR", "/assets/sfx/char_selection/plague_doctor.wav");
+        } catch (Exception ignore) {}
+    }
+
+    private void loadCharacterSelectClip(String id, String resourcePath) {
+        try {
+            java.net.URL url = getClass().getResource(resourcePath);
+            if (url == null) return;
+            Clip clip = AudioSystem.getClip();
+            try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
+                if ("PLAGUEDOCTOR".equals(id)) {
+                    javax.sound.sampled.AudioFormat fmt = ais.getFormat();
+                    long totalFrames = ais.getFrameLength();
+                    float framesPerSecond = fmt.getFrameRate();
+                    long cutFrames = (long) Math.max(1, framesPerSecond);
+                    long keepFrames = (totalFrames <= 0 || framesPerSecond <= 0) ? totalFrames : Math.max(1, totalFrames - cutFrames);
+                    AudioInputStream truncated = (keepFrames > 0)
+                            ? new AudioInputStream(ais, fmt, keepFrames)
+                            : ais;
+                    clip.open(truncated);
+                    applyVolume(clip, sfxVolume, 0.7);
+                } else {
+                    clip.open(ais);
+                    applyVolume(clip, sfxVolume);
+                }
+            }
+            charSelectClips.put(id, clip);
         } catch (Exception ignore) {}
     }
 
@@ -177,6 +210,7 @@ public class SoundManager {
         if (errorClip != null) applyVolume(errorClip, sfxVolume);
         if (lossClip != null) applyVolume(lossClip, sfxVolume);
         if (winClip != null) applyVolume(winClip, sfxVolume);
+        for (Clip c : charSelectClips.values()) applyVolume(c, sfxVolume);
     }
 
     public double getSfxVolume() { return sfxVolume; }
@@ -193,6 +227,23 @@ public class SoundManager {
         try {
             FloatControl ctl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
             double effective = vol * globalAttenuation;
+            if (clip == musicClip) {
+                effective *= musicAttenuation;
+            }
+            if (clip == settingsClip) {
+                effective *= settingsAttenuation;
+            }
+            double clamped = Math.max(0.0001, Math.min(1.0, effective));
+            float dB = (float) (20.0 * Math.log10(clamped));
+            dB = Math.max(ctl.getMinimum(), Math.min(ctl.getMaximum(), dB));
+            ctl.setValue(dB);
+        } catch (Exception ignore) {}
+    }
+
+    private void applyVolume(Clip clip, double vol, double extraFactor) {
+        try {
+            FloatControl ctl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+            double effective = vol * globalAttenuation * Math.max(0.0001, extraFactor);
             if (clip == musicClip) {
                 effective *= musicAttenuation;
             }
@@ -326,6 +377,40 @@ public class SoundManager {
         }
     }
 
+    public void playCharacterSelectFor(String id) {
+        if (muted) return;
+        Clip clip = charSelectClips.get(id);
+        if (clip != null) {
+            try { if (clip.isRunning()) clip.stop(); } catch (Exception ignore) {}
+            try { clip.setFramePosition(0); } catch (Exception ignore) {}
+            applyVolume(clip, sfxVolume);
+            try { clip.start(); } catch (Exception ignore) {}
+        }
+    }
+
+    public void playCharacterSelectFor(String id, Runnable onFinished) {
+        if (muted) {
+            if (onFinished != null) { try { javafx.application.Platform.runLater(onFinished); } catch (Exception ignore) {} }
+            return;
+        }
+        Clip clip = charSelectClips.get(id);
+        if (clip != null) {
+            try { if (clip.isRunning()) clip.stop(); } catch (Exception ignore) {}
+            try { clip.setFramePosition(0); } catch (Exception ignore) {}
+            applyVolume(clip, sfxVolume);
+            try {
+                clip.addLineListener(ev -> {
+                    if (ev != null && ev.getType() == javax.sound.sampled.LineEvent.Type.STOP) {
+                        if (onFinished != null) { try { javafx.application.Platform.runLater(onFinished); } catch (Exception ignore) {} }
+                    }
+                });
+                clip.start();
+            } catch (Exception ignore) {}
+        } else {
+            if (onFinished != null) { try { javafx.application.Platform.runLater(onFinished); } catch (Exception ignore) {} }
+        }
+    }
+
     public void stopMusic() {
         if (musicClip != null) {
             try { musicClip.stop(); } catch (Exception ignore) {}
@@ -335,7 +420,8 @@ public class SoundManager {
     }
 
     public void fadeOutMusic(int durationMs) {
-        if (musicClip == null) return;
+        final Clip target = musicClip;
+        if (target == null) return;
         new Thread(() -> {
             int d = Math.max(50, durationMs);
             double start = muted ? 0.0 : musicVolume;
@@ -345,10 +431,14 @@ public class SoundManager {
             for (int i = 0; i < steps; i++) {
                 double t = (double) (i + 1) / steps;
                 double v = start + (end - start) * t;
-                applyVolume(musicClip, v);
+                applyVolume(target, v);
                 try { Thread.sleep(sleep); } catch (InterruptedException ignore) {}
             }
-            stopMusic();
+            try { target.stop(); } catch (Exception ignore) {}
+            try { target.close(); } catch (Exception ignore) {}
+            if (musicClip == target) {
+                musicClip = null;
+            }
         }).start();
     }
 
@@ -377,15 +467,14 @@ public class SoundManager {
             java.net.URL url = getClass().getResource(pick);
             if (url == null) return;
             musicClip = AudioSystem.getClip();
-            try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
-                musicClip.open(ais);
-            }
+            try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) { musicClip.open(ais); }
             applyVolume(musicClip, 0.0001);
             musicClip.loop(Clip.LOOP_CONTINUOUSLY);
             musicClip.start();
-            fadeInCurrentMusic(400);
+            fadeInCurrentMusic(800);
         } catch (Exception ignore) {}
     }
+
 
     public void playHomeMusic() {
         stopMusic();
@@ -401,9 +490,10 @@ public class SoundManager {
             try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
                 musicClip.open(ais);
             }
-            applyVolume(musicClip, musicVolume);
+            applyVolume(musicClip, 0.0001);
             musicClip.loop(Clip.LOOP_CONTINUOUSLY);
             musicClip.start();
+            fadeInCurrentMusic(2000);
         } catch (Exception ignore) {}
     }
 
