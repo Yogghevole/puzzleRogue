@@ -33,9 +33,6 @@
                             </image>
                         </ImageView>
                     </graphic>
-                    <tooltip>
-                        <Tooltip text="Item Selection" />
-                    </tooltip>
                 </Button>
 
                 <Button fx:id="skipButton" AnchorPane.topAnchor="38.0" AnchorPane.rightAnchor="30.0"
@@ -48,9 +45,6 @@
                             </image>
                         </ImageView>
                     </graphic>
-                    <tooltip>
-                        <Tooltip text="Vittoria livello / Selezione oggetto" />
-                    </tooltip>
                 </Button>
 
                 <HBox fx:id="livesHBox" alignment="CENTER_LEFT" spacing="6.0"
@@ -78,8 +72,6 @@
                 <VBox fx:id="characterSpriteBox" alignment="BOTTOM_CENTER" AnchorPane.bottomAnchor="3.0" AnchorPane.leftAnchor="80.0">
                     <ImageView fx:id="characterSpriteView" preserveRatio="true" smooth="true" />
                 </VBox>
-
-                
 
                 <VBox fx:id="enemySpriteBox" alignment="BOTTOM_CENTER" AnchorPane.bottomAnchor="3.0" AnchorPane.rightAnchor="50.0">
                     <ImageView fx:id="enemySpriteView" preserveRatio="true" smooth="true" />

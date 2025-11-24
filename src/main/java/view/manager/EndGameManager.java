@@ -31,7 +31,7 @@ public class EndGameManager {
             StackPane.setAlignment(homeBtn, Pos.BOTTOM_CENTER);
             StackPane.setMargin(homeBtn, new Insets(40, 0, -10, 0));
             homeBtn.setViewOrder(-3);
-            homeBtn.setCursor(javafx.scene.Cursor.HAND);
+            try { homeBtn.setCursor(null); } catch (Exception ignore) {}
 
             homeBtn.setOnMouseEntered(ev -> {
                 Glow glow = new Glow(0.35);

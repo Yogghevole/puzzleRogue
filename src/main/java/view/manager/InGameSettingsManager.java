@@ -75,7 +75,7 @@ public class InGameSettingsManager {
             ImageView closeIcon = new ImageView(closeImg);
             closeIcon.setPreserveRatio(true);
             closeIcon.setFitWidth(36);
-            closeIcon.setCursor(Cursor.HAND);
+            try { closeIcon.setCursor(null); } catch (Exception ignore) {}
             closeIcon.setOnMouseEntered(ev -> {
                 Glow glow = new Glow(0.6);
                 DropShadow shadow = new DropShadow();
@@ -171,7 +171,7 @@ public class InGameSettingsManager {
         ImageView icon = new ImageView(img);
         icon.setPreserveRatio(true);
         icon.setFitWidth(240);
-        icon.setCursor(Cursor.HAND);
+        try { icon.setCursor(null); } catch (Exception ignore) {}
         icon.setOnMouseEntered(ev -> {
             Glow glow = new Glow(0.6);
             DropShadow shadow = new DropShadow();
