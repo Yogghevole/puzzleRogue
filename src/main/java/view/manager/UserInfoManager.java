@@ -1,9 +1,6 @@
 package view.manager;
 
 import javafx.scene.control.Label;
-import javafx.scene.layout.VBox;
-import model.domain.User;
-import model.service.SessionService;
 
 /**
  * Manages the display of user information in the UI.

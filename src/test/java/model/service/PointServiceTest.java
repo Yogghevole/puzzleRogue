@@ -2,7 +2,6 @@ package model.service;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import java.util.List;
 
 /**
  * Unit tests for PointService.

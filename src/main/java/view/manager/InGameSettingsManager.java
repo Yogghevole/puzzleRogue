@@ -1,7 +1,6 @@
 package view.manager;
 
 import javafx.geometry.Pos;
-import javafx.scene.Cursor;
 import javafx.scene.effect.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;

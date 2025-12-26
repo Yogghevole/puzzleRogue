@@ -2,7 +2,6 @@ package model.domain;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import java.util.HashMap;
 
 /**
  * Unit tests for the User domain class.

@@ -501,7 +501,7 @@ public class GameController {
     }
 
     private void applyThemeForCharacter(String characterId) {
-        String added = hudManager.applyThemeForCharacter(mainGameArea, characterId);
+        hudManager.applyThemeForCharacter(mainGameArea, characterId);
         
         if (characterId != null) {
             String spritePath = null;

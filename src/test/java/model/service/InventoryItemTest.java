@@ -3,7 +3,6 @@ package model.service;
 import model.dao.UserDAO;
 import model.db.DatabaseManager;
 import model.domain.Run;
-import model.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

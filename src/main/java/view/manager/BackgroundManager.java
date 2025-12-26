@@ -2,13 +2,10 @@ package view.manager;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import java.net.URL;
-import java.nio.file.*;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import model.service.AssetManifest;
 
