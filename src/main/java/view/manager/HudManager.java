@@ -16,6 +16,10 @@ import model.service.GameDataService;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Manages the Heads-Up Display (HUD) elements like level, difficulty, lives, and buffs.
+ * Handles updates and animations for these UI components.
+ */
 public class HudManager {
 
     public void hideGameUIForSelection(boolean hide,
@@ -110,7 +114,6 @@ public class HudManager {
         switch (id) {
             case "EXTRA_LIVES": return "/assets/icons/buffs/extra_lives.png";
             case "FIRST_ERROR_PROTECT": return "/assets/icons/buffs/first_error_protection.png";
-            case "STARTING_HINTS": return "/assets/icons/buffs/extra_hints.png";
             case "POINT_BONUS": return "/assets/icons/buffs/point_bonus.png";
             case "INVENTORY_CAPACITY": return "/assets/icons/buffs/inventory_capacity.png";
             case "STARTING_CELLS": return "/assets/icons/buffs/starting_cells.png";

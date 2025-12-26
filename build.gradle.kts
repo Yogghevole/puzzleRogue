@@ -11,7 +11,7 @@ repositories {
 
 javafx {
     modules("javafx.base", "javafx.controls", "javafx.graphics", "javafx.fxml")
-    version  = "25"
+    version  = "17.0.10"
 }
 dependencies {
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.9.8")
@@ -20,6 +20,26 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jUnitVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    val jfxVersion = "17.0.10"
+    val platforms = listOf("win", "linux", "mac")
+    val modules = listOf("base", "controls", "graphics", "fxml")
+    
+    platforms.forEach { platform ->
+        modules.forEach { module ->
+            implementation("org.openjfx:javafx-$module:$jfxVersion:$platform")
+        }
+    }
+}
+
+tasks.shadowJar {
+    manifest {
+        attributes["Main-Class"] = "app.Launcher"
+    }
+    archiveBaseName.set("puzzleRogue")
+    archiveClassifier.set("")
+    archiveVersion.set("")
+    mergeServiceFiles()
 }
 
 tasks.processResources {
@@ -36,7 +56,7 @@ tasks.withType<Test> {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 

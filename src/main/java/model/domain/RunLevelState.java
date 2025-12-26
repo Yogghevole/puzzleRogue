@@ -1,48 +1,70 @@
 package model.domain;
 
 /**
- * Rappresenta lo stato specifico del livello Sudoku attualmente in corso nella Run.
+ * Snapshot of the current level's state, including grid and progress.
  */
 public class RunLevelState {
 
     private final Integer runId; 
     private int currentLevel;
-    private final String enemySpriteId;
+    private String enemySpriteId;
+    private String backgroundId;
     private final String difficultyTier;
     private final String initialGridData;
+    private final String solvedGridData;
     private String userGridData;      
     private String notesData;         
     private int errorsInLevel;
     private boolean protectionUsed;
+    private String bonusCellsData;
 
-    public RunLevelState(Integer runId, int currentLevel, String enemySpriteId, String difficultyTier, 
-                         String initialGridData, String userGridData, String notesData, 
-                         int errorsInLevel, boolean protectionUsed) {
+    public RunLevelState(Integer runId, int currentLevel, String enemySpriteId, String backgroundId, String difficultyTier, 
+                         String initialGridData, String solvedGridData, String userGridData, String notesData, 
+                         int errorsInLevel, boolean protectionUsed, String bonusCellsData) {
         this.runId = runId;
         this.currentLevel = currentLevel;
         this.enemySpriteId = enemySpriteId;
+        this.backgroundId = backgroundId;
         this.difficultyTier = difficultyTier;
         this.initialGridData = initialGridData;
+        this.solvedGridData = solvedGridData;
         this.userGridData = userGridData;
         this.notesData = notesData;
         this.errorsInLevel = errorsInLevel;
         this.protectionUsed = protectionUsed;
+        this.bonusCellsData = bonusCellsData;
+    }
+    
+
+    public RunLevelState(Integer runId, int currentLevel, String enemySpriteId, String difficultyTier, 
+                         String initialGridData, String solvedGridData, String userGridData, String notesData, 
+                         int errorsInLevel, boolean protectionUsed, String bonusCellsData) {
+        this(runId, currentLevel, enemySpriteId, null, difficultyTier, initialGridData, solvedGridData, userGridData, notesData, errorsInLevel, protectionUsed, bonusCellsData);
+    }
+    
+
+    public RunLevelState(Integer runId, int currentLevel, String enemySpriteId, String difficultyTier, 
+                         String initialGridData, String solvedGridData, String userGridData, String notesData, 
+                         int errorsInLevel, boolean protectionUsed) {
+        this(runId, currentLevel, enemySpriteId, null, difficultyTier, initialGridData, solvedGridData, userGridData, notesData, errorsInLevel, protectionUsed, "");
     }
 
     public RunLevelState(int currentLevel, String enemySpriteId, SudokuGrid newPuzzle, boolean hasProtectionBuff) {
         this(null, 
              currentLevel, 
              enemySpriteId, 
+             null,
              newPuzzle.getDifficultyTier(), 
              convertGridToString(newPuzzle.getInitialGrid()), 
+             convertGridToString(newPuzzle.getSolvedGrid()),
              convertGridToString(newPuzzle.getInitialGrid()),
              "", 
              0, 
-             !hasProtectionBuff
+             !hasProtectionBuff,
+             String.join(";", newPuzzle.getBonusCells())
         );
     }
     
-    // --- (Griglia <-> String) ---
 
     public static String convertGridToString(int[][] grid) {
         StringBuilder sb = new StringBuilder();
@@ -69,7 +91,6 @@ public class RunLevelState {
     }
 
 
-    // --- Metodi Getters e Setters ---
 
     public int getCurrentLevel() {
         return currentLevel;
@@ -111,7 +132,19 @@ public class RunLevelState {
         return initialGridData;
     }
     
+    public String getSolvedGridData() {
+        return solvedGridData;
+    }
+    
     public Integer getRunId() { return runId; }
     public String getEnemySpriteId() { return enemySpriteId; }
+    public void setEnemySpriteId(String enemySpriteId) { this.enemySpriteId = enemySpriteId; }
+    
+    public String getBackgroundId() { return backgroundId; }
+    public void setBackgroundId(String backgroundId) { this.backgroundId = backgroundId; }
+    
     public String getDifficultyTier() { return difficultyTier; }
+    
+    public String getBonusCellsData() { return bonusCellsData; }
+    public void setBonusCellsData(String bonusCellsData) { this.bonusCellsData = bonusCellsData; }
 }

@@ -10,6 +10,10 @@ import javafx.scene.paint.Color;
 import javafx.util.Duration;
 import java.util.function.Consumer;
 
+/**
+ * Manages the UI representation of the player's lives.
+ * Handles rendering of heart icons and animations for losing or gaining lives.
+ */
 public class LivesUIManager {
     private final HBox livesHBox;
     private final String heartResourcePath;

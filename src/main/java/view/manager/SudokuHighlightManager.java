@@ -3,6 +3,10 @@ package view.manager;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
+/**
+ * Manages the highlighting of cells in the Sudoku grid.
+ * Handles visual cues for matching numbers, regions, and error/correct states.
+ */
 public class SudokuHighlightManager {
     private final int gridSize;
     private final Label[][] cellLabels;

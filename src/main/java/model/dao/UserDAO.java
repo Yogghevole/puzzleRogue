@@ -10,7 +10,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Gestisce l'accesso ai dati persistenti per l'entità User e le sue relazioni.
+ * Data Access Object for User entities.
+ * Manages user profiles, statistics, and permanent buffs.
  */
 public class UserDAO {
 
@@ -20,7 +21,6 @@ public class UserDAO {
         this.dbManager = dbManager;
     }
 
-    // --- Metodo CREATE (Nuovo utente) ---
 
     public boolean createUser(String nick) {
         String sqlUser = "INSERT INTO User (nick, current_run_id, points_available, points_total, runs_completed, runs_won) VALUES (?, NULL, 0, 0, 0, 0)";
@@ -37,7 +37,6 @@ public class UserDAO {
         }
     }
     
-    // --- Metodo READ (Carica utente) ---
 
     public User getUserByNick(String nick) {
         String sqlUser = "SELECT * FROM User WHERE nick = ?";
@@ -49,9 +48,12 @@ public class UserDAO {
                 stmt.setString(1, nick);
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
+                        int currentRunIdInt = rs.getInt("current_run_id");
+                        Integer currentRunId = rs.wasNull() ? null : currentRunIdInt;
+                        
                         user = new User(
                             rs.getString("nick"),
-                            rs.getInt("current_run_id"),
+                            currentRunId,
                             rs.getInt("points_available"),
                             rs.getInt("points_total"),
                             rs.getInt("runs_completed"),
@@ -89,8 +91,10 @@ public class UserDAO {
         return buffs;
     }
 
-    // --- Metodo UPDATE (Salva stato utente e buff) ---
 
+    /**
+     * Updates user statistics and permanent buffs in a single transaction.
+     */
     public boolean updateUser(User user) {
         String sqlUpdateUser = "UPDATE User SET current_run_id = ?, points_available = ?, points_total = ?, runs_completed = ?, runs_won = ? WHERE nick = ?";
 

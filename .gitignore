@@ -9,3 +9,10 @@ bin/
 .idea
 
 .settings
+.vscode/
+
+# Database
+puzzle_rogue.db
+
+# Logs
+*.log

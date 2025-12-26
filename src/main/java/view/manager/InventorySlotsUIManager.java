@@ -7,6 +7,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.layout.StackPane;
 
+/**
+ * Manages the inventory UI, including slots, items, and interactions.
+ * Handles rendering of inventory slots and item management.
+ */
 public class InventorySlotsUIManager {
     private final HBox inventoryHBox;
     private final String placeholderResourcePath;
@@ -144,6 +148,12 @@ public class InventorySlotsUIManager {
 
     public void clearSlot(int index) {
         setSlotImageAt(index, placeholderResourcePath);
+    }
+
+    public void clear() {
+        for (int i = 0; i < slotViews.size(); i++) {
+            clearSlot(i);
+        }
     }
 
     public void setOnItemClicked(ItemClickHandler handler) {

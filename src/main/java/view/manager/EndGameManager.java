@@ -16,6 +16,10 @@ import javafx.scene.Parent;
 import javafx.stage.Stage;
 import model.service.PointService;
 
+/**
+ * Handles the display of victory and defeat screens, including score breakdowns.
+ * Manages the transition animations and navigation back to the home screen.
+ */
 public class EndGameManager {
 
     private void attachHomeButton(StackPane cardPane, double targetWidth, StackPane modalContainer) {

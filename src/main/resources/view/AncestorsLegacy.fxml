@@ -1,43 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
- 
+<!-- Legacy/History screen to view past runs or high scores. -->
+
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Button?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.image.Image?>
+<?import javafx.geometry.Insets?>
 
 <StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-           fx:controller="view.controller.LegacyController">
+           fx:controller="view.controller.LegacyController"
+           fx:id="rootPane">
     <children>
         <ImageView fx:id="backgroundView" preserveRatio="false" smooth="true" />
         <BorderPane prefWidth="1200.0" prefHeight="800.0">
             <top>
-                <HBox alignment="CENTER" spacing="12.0" BorderPane.alignment="CENTER">
-                    <Label text="The Ancestor's Legacy" styleClass="heading-label" />
-                    <Region HBox.hgrow="ALWAYS" />
-                    <Button fx:id="backButton" text="Back" styleClass="menu-button" />
+                <HBox alignment="TOP_RIGHT" spacing="0" BorderPane.alignment="CENTER" pickOnBounds="false">
+                    <padding>
+                        <Insets top="20.0" left="0.0" bottom="0.0" right="30.0"/>
+                    </padding>
+                    
+                    <VBox alignment="TOP_RIGHT" spacing="4.0">
+                         <HBox alignment="CENTER_RIGHT" spacing="30.0">
+                            <VBox alignment="CENTER_RIGHT" spacing="2.0">
+                                <Label fx:id="nickLabel" text="Player" styleClass="user-nick-label"/>
+                                <Label fx:id="pointsLabel" text="0 pts" styleClass="user-points-label"/>
+                            </VBox>
+                            <ImageView fx:id="backButton" fitWidth="48.0" fitHeight="48.0" styleClass="settings-icon" pickOnBounds="true">
+                                <image>
+                                    <Image url="@../assets/icons/utils/x.png"/>
+                                </image>
+                            </ImageView>
+                         </HBox>
+                    </VBox>
                 </HBox>
             </top>
-            <center>
-                <VBox alignment="TOP_RIGHT" spacing="8.0" BorderPane.alignment="CENTER">
-                    <Label text="Buff Info" styleClass="heading-small" />
+            <right>
+                <VBox alignment="TOP_RIGHT" spacing="8.0" BorderPane.alignment="CENTER" style="-fx-padding: 20;">
                     <VBox fx:id="buffInfoBox" alignment="TOP_RIGHT" spacing="6.0" />
                 </VBox>
-            </center>
-            <right>
-                <VBox alignment="TOP_RIGHT" spacing="8.0" BorderPane.alignment="CENTER" />
             </right>
             <bottom>
-                <VBox alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">
-                    <Label text="Tap a buff to select. Click Back to return." styleClass="hint-label" />
-                    <HBox fx:id="buffIconsHBox" alignment="CENTER" spacing="18.0" />
-                </VBox>
             </bottom>
         </BorderPane>
+        
+        <VBox alignment="CENTER" spacing="10.0" translateY="-70.0" pickOnBounds="false">
+            <HBox fx:id="buffIconsHBox" alignment="CENTER" spacing="50.0" />
+        </VBox>
     </children>
 </StackPane>

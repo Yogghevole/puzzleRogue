@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Rappresenta una singola Run in corso o completata.
+ * Represents a single game run, tracking progress, score, and state.
  */
 public class Run {
 
@@ -14,8 +14,12 @@ public class Run {
     private int livesRemaining;
     private int totalErrors;
     private int score;
+    private int levelsCompleted;
+    private int zeroErrorLevels;
+    private int scoreItemPoints;
     private RunLevelState currentLevelState;
     private Map<String, Integer> inventory;
+    private java.util.Set<String> usedEnemies;
 
     public Run(String userNick, int livesRemaining, String characterId) {
         this.userNick = userNick;
@@ -23,7 +27,11 @@ public class Run {
         this.characterId = characterId;
         this.totalErrors = 0;
         this.score = 0;
+        this.levelsCompleted = 0;
+        this.zeroErrorLevels = 0;
+        this.scoreItemPoints = 0;
         this.inventory = new HashMap<>();
+        this.usedEnemies = new java.util.HashSet<>();
     }
 
     public void setId(Integer id) {
@@ -81,6 +89,26 @@ public class Run {
     public void setFinalScore(int finalScore) {
         this.score = finalScore;
     }
+
+    public int getLevelsCompleted() { return levelsCompleted; }
+    public void setLevelsCompleted(int levelsCompleted) { this.levelsCompleted = levelsCompleted; }
+    public void incrementLevelsCompleted() { this.levelsCompleted++; }
+
+    public int getZeroErrorLevels() { return zeroErrorLevels; }
+    public void setZeroErrorLevels(int zeroErrorLevels) { this.zeroErrorLevels = zeroErrorLevels; }
+    public void incrementZeroErrorLevels() { this.zeroErrorLevels++; }
+
+    public int getScoreItemPoints() { return scoreItemPoints; }
+    public void setScoreItemPoints(int scoreItemPoints) { this.scoreItemPoints = scoreItemPoints; }
+
+    public java.util.Set<String> getUsedEnemies() { return usedEnemies; }
+    public void setUsedEnemies(java.util.Set<String> usedEnemies) { this.usedEnemies = usedEnemies; }
+    public void addUsedEnemy(String enemyPath) { 
+        if (this.usedEnemies == null) this.usedEnemies = new java.util.HashSet<>();
+        this.usedEnemies.add(enemyPath); 
+    }
+
+    public void addScoreItemPoints(int points) { this.scoreItemPoints += points; }
 
     public RunLevelState getCurrentLevelState() {
         return currentLevelState;

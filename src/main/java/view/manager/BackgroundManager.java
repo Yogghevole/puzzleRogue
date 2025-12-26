@@ -10,8 +10,11 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import model.service.AssetManifest;
+
 /**
- * Gestisce lo sfondo di gioco.
+ * Manages background images for levels and boss fights, including caching and random selection.
+ * Handles preloading of assets to ensure smooth transitions during gameplay.
  */
 public class BackgroundManager {
 
@@ -26,20 +29,28 @@ public class BackgroundManager {
 
     public void preloadAll() {
         try {
-            List<String> levelPaths = listBackgroundFiles("/assets/backgrounds/levels");
-            List<String> bossPaths = listBackgroundFiles("/assets/backgrounds/boss");
+            List<String> levelPaths = AssetManifest.getBackgroundPaths(false);
+            List<String> bossPaths = AssetManifest.getBackgroundPaths(true);
             int loaded = 0;
 
             for (String p : levelPaths) {
                 if (!cacheLevels.containsKey(p)) {
-                    cacheLevels.put(p, new Image(getClass().getResourceAsStream(p), 0, 0, false, true));
-                    loaded++;
+                    try {
+                        cacheLevels.put(p, new Image(getClass().getResourceAsStream(p), 0, 0, false, true));
+                        loaded++;
+                    } catch (Exception ex) {
+                        LOG.log(Level.WARNING, "Failed to load background: {0}", p);
+                    }
                 }
             }
             for (String p : bossPaths) {
                 if (!cacheBoss.containsKey(p)) {
-                    cacheBoss.put(p, new Image(getClass().getResourceAsStream(p), 0, 0, false, true));
-                    loaded++;
+                    try {
+                        cacheBoss.put(p, new Image(getClass().getResourceAsStream(p), 0, 0, false, true));
+                        loaded++;
+                    } catch (Exception ex) {
+                        LOG.log(Level.WARNING, "Failed to load boss background: {0}", p);
+                    }
                 }
             }
             LOG.log(Level.FINE, "Background preload completed: {0} images (levels={1}, boss={2})",
@@ -81,22 +92,6 @@ public class BackgroundManager {
         LOG.log(Level.FINE, "BackgroundManager cache cleared");
     }
 
-    private List<String> listBackgroundFiles(String basePath) {
-        try {
-            URL url = getClass().getResource(basePath);
-            if (url == null) return Collections.emptyList();
-            Path dir = Paths.get(url.toURI());
-            try (Stream<Path> s = Files.list(dir)) {
-                return s.filter(Files::isRegularFile)
-                        .map(p -> basePath + "/" + p.getFileName().toString())
-                        .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Error listing {0}: {1}", new Object[]{basePath, e.getMessage()});
-            return Collections.emptyList();
-        }
-    }
-
     public void applyRandomForLevel(ImageView backgroundImageView, boolean boss) {
         if (backgroundImageView == null) return;
         Image img = selectRandomUnique(boss);
@@ -114,5 +109,38 @@ public class BackgroundManager {
         if (p.contains("crypts")) return "crypts";
         if (p.contains("town")) return "town";
         return "levels";
+    }
+
+    public String getLastSelectedPath() {
+        return lastSelectedPath;
+    }
+
+    public boolean applyBackground(ImageView backgroundImageView, String path) {
+        if (backgroundImageView == null || path == null) return false;
+        
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        
+        Image img = cacheLevels.get(path);
+        if (img == null) img = cacheBoss.get(path);
+        if (img == null) {
+            try {
+                java.io.InputStream is = getClass().getResourceAsStream(path);
+                if (is != null) {
+                    img = new Image(is, 0, 0, false, true);
+                } else {
+                     LOG.log(Level.WARNING, "Resource stream is null for path: {0}", path);
+                }
+            } catch (Exception e) {
+                LOG.log(Level.WARNING, "Could not load background from path: {0}", path);
+            }
+        }
+        if (img != null) {
+            backgroundImageView.setImage(img);
+            lastSelectedPath = path;
+            return true;
+        }
+        return false;
     }
 }

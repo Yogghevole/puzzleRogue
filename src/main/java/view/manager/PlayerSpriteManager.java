@@ -3,6 +3,10 @@ package view.manager;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
+/**
+ * Manages the player character sprite in the UI.
+ * Handles displaying the correct image with appropriate scaling for different character types.
+ */
 public class PlayerSpriteManager {
 
     public void applyTo(ImageView view, Image image, String characterId) {

@@ -6,6 +6,11 @@ import java.util.Set;
 import model.domain.SudokuGrid;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Unit tests for the SudokuEngine class.
+ * Verifies core game mechanics including value insertion, win checking,
+ * note toggling, and hint system functionality.
+ */
 public class SudokuEngineTest {
 
     private int[][] solved() {

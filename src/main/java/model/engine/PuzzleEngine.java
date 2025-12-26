@@ -4,7 +4,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Interfaccia che definisce il meccanismo di puzzle nel gioco.
+ * Interface defining the core interactions for a puzzle game engine.
  */
 public interface PuzzleEngine {
 

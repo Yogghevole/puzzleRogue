@@ -14,7 +14,7 @@ These buffs are unlocked by spending **Points** in the "The Ancestor's Legacy" m
 | **FIRST_ERROR_PROTECT** | First Error Protection 
 | | | 1 | 2000 | Gains **1 shield** that cancels the first error per Level. |
 
-| **STARTING_HINTS** | Initial Hints 
+| **STARTING_CELLS** | Initial Cells Filled 
 | | | 1 | 1000 | Generates the Sudoku with **+1** pre-filled cell. |
 | | | 2 | 1600 | Generates the Sudoku with **+2** pre-filled cells. |
 | | | 3 | 3000 | Generates the Sudoku with **+3** pre-filled cells. |

@@ -14,6 +14,10 @@ import javafx.scene.layout.StackPane;
 
 import java.util.function.IntConsumer;
 
+/**
+ * Manages the game input controls (number buttons, pencil, eraser) and keyboard shortcuts.
+ * Handles both mouse interactions with the UI and keyboard events.
+ */
 public class GameInputManager {
 
     private final Button[] numberButtons = new Button[10];

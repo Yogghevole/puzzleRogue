@@ -10,7 +10,8 @@ import java.util.function.Consumer;
 import view.util.ModalUtils;
 
 /**
- * Gestisce l'overlay di selezione oggetto mostrato alla fine dei livelli (non boss).
+ * Manages the item selection screen presented to the player.
+ * Displays random item options for the user to choose from.
  */
 public class ItemSelectionManager {
 

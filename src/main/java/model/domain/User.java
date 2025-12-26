@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 
+/**
+ * Represents a player profile with statistics and permanent progression.
+ */
 public class User {
 
     private String nick;
@@ -58,6 +61,18 @@ public class User {
         this.pointsTotal += points;
     }
 
+    public boolean spendPoints(int points) {
+        if (pointsAvailable >= points) {
+            pointsAvailable -= points;
+            return true;
+        }
+        return false;
+    }
+
+    public boolean tryPurchase(int cost) {
+        return spendPoints(cost);
+    }
+
     public int getPointsTotal() {
         return pointsTotal;
     }
@@ -93,6 +108,10 @@ public class User {
     public int getBuffLevel(String buffId) {
         return permanentBuffLevels.getOrDefault(buffId, 0);
     }
+
+    public int getBuffLevel(BuffType type) {
+        return getBuffLevel(type.name());
+    }
     
     public void upgradeBuff(String buffId, int newLevel) {
         if (newLevel > 0) {
@@ -100,5 +119,9 @@ public class User {
         } else {
              permanentBuffLevels.remove(buffId); 
         }
+    }
+
+    public void upgradeBuff(BuffType type, int newLevel) {
+        upgradeBuff(type.name(), newLevel);
     }
 }

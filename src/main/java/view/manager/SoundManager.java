@@ -5,6 +5,10 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.FloatControl;
 
+/**
+ * Singleton manager for handling all game audio.
+ * Manages sound effects (SFX) and background music, including volume control and muting.
+ */
 public class SoundManager {
     private static final SoundManager INSTANCE = new SoundManager();
 
@@ -36,153 +40,49 @@ public class SoundManager {
     private static final double BASE_MUSIC_GAIN = 0.1;
 
     private SoundManager() {
+        invalidClickClip = loadClip("/assets/sfx/ui_button_invalid.wav", 1.0);
+        healClip = loadClip("/assets/sfx/items/heal.wav", 1.0);
+        hintClip = loadClip("/assets/sfx/items/hint.wav", 1.0);
+        sacrificeClip = loadClip("/assets/sfx/items/sacriface.wav", 1.0);
+        scoreClip = loadClip("/assets/sfx/items/score.wav", 1.0);
+        characterSelectionClip = loadClip("/assets/sfx/character_selection.wav", 1.0);
+        settingsClip = loadClip("/assets/sfx/settings.wav", 0.5);
+        winSelectItemClip = loadClip("/assets/sfx/win_select_item.wav", 1.0);
+        numberClickClip = loadClip("/assets/sfx/numberclick.wav", 1.0);
+        correctClip = loadClip("/assets/sfx/correct.wav", 1.0);
+        errorClip = loadClip("/assets/sfx/error.wav", 1.0);
+        lossClip = loadClip("/assets/sfx/loss.wav", 1.0);
+        winClip = loadClip("/assets/sfx/win.wav", 1.0);
+
+        loadCharacterSelectClip("CRUSADER", "/assets/sfx/char_selection/crusader.wav");
+        loadCharacterSelectClip("HIGHWAYMAN", "/assets/sfx/char_selection/highwayman.wav");
+        loadCharacterSelectClip("JESTER", "/assets/sfx/char_selection/jester.wav");
+        loadCharacterSelectClip("OCCULTIST", "/assets/sfx/char_selection/occultist.wav");
+        loadCharacterSelectClip("PLAGUEDOCTOR", "/assets/sfx/char_selection/plague_doctor.wav");
+    }
+
+    private Clip loadClip(String resourcePath, double gainMultiplier) {
         try {
-            java.net.URL url = getClass().getResource("/assets/sfx/ui_button_invalid.wav");
+            java.net.URL url = getClass().getResource(resourcePath);
             if (url != null) {
-                invalidClickClip = AudioSystem.getClip();
+                Clip clip = AudioSystem.getClip();
                 try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
-                    invalidClickClip.open(ais);
+                    clip.open(ais);
                 }
-                clipGains.put(invalidClickClip, 1.0);
-                applyVolume(invalidClickClip, sfxVolume);
+                clipGains.put(clip, gainMultiplier);
+                applyVolume(clip, sfxVolume);
+                return clip;
             }
-            java.net.URL healUrl = getClass().getResource("/assets/sfx/items/heal.wav");
-            if (healUrl != null) {
-                healClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(healUrl)) {
-                    healClip.open(ais);
-                }
-                clipGains.put(healClip, 1.0);
-                applyVolume(healClip, sfxVolume);
-            }
-            java.net.URL hintUrl = getClass().getResource("/assets/sfx/items/hint.wav");
-            if (hintUrl != null) {
-                hintClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(hintUrl)) {
-                    hintClip.open(ais);
-                }
-                clipGains.put(hintClip, 1.0);
-                applyVolume(hintClip, sfxVolume);
-            }
-            java.net.URL sacrUrl = getClass().getResource("/assets/sfx/items/sacriface.wav");
-            if (sacrUrl != null) {
-                sacrificeClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(sacrUrl)) {
-                    sacrificeClip.open(ais);
-                }
-                clipGains.put(sacrificeClip, 1.0);
-                applyVolume(sacrificeClip, sfxVolume);
-            }
-            java.net.URL scoreUrl = getClass().getResource("/assets/sfx/items/score.wav");
-            if (scoreUrl != null) {
-                scoreClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(scoreUrl)) {
-                    scoreClip.open(ais);
-                }
-                clipGains.put(scoreClip, 1.0);
-                applyVolume(scoreClip, sfxVolume);
-            }
-
-            java.net.URL charSelUrl = getClass().getResource("/assets/sfx/character_selection.wav");
-            if (charSelUrl != null) {
-                characterSelectionClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(charSelUrl)) {
-                    characterSelectionClip.open(ais);
-                }
-                clipGains.put(characterSelectionClip, 1.0);
-                applyVolume(characterSelectionClip, sfxVolume);
-            }
-
-            java.net.URL settingsUrl = getClass().getResource("/assets/sfx/settings.wav");
-            if (settingsUrl != null) {
-                settingsClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(settingsUrl)) {
-                    settingsClip.open(ais);
-                }
-                clipGains.put(settingsClip, 0.5);
-                applyVolume(settingsClip, sfxVolume);
-            }
-
-            java.net.URL winSelItemUrl = getClass().getResource("/assets/sfx/win_select_item.wav");
-            if (winSelItemUrl != null) {
-                winSelectItemClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(winSelItemUrl)) {
-                    winSelectItemClip.open(ais);
-                }
-                clipGains.put(winSelectItemClip, 1.0);
-                applyVolume(winSelectItemClip, sfxVolume);
-            }
-
-            java.net.URL numberClickUrl = getClass().getResource("/assets/sfx/numberclick.wav");
-            if (numberClickUrl != null) {
-                numberClickClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(numberClickUrl)) {
-                    numberClickClip.open(ais);
-                }
-                clipGains.put(numberClickClip, 1.0);
-                applyVolume(numberClickClip, sfxVolume);
-            }
-
-            java.net.URL correctUrl = getClass().getResource("/assets/sfx/correct.wav");
-            if (correctUrl != null) {
-                correctClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(correctUrl)) {
-                    correctClip.open(ais);
-                }
-                clipGains.put(correctClip, 1.0);
-                applyVolume(correctClip, sfxVolume);
-            }
-
-            java.net.URL errorUrl = getClass().getResource("/assets/sfx/error.wav");
-            if (errorUrl != null) {
-                errorClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(errorUrl)) {
-                    errorClip.open(ais);
-                }
-                clipGains.put(errorClip, 1.0);
-                applyVolume(errorClip, sfxVolume);
-            }
-
-            java.net.URL lossUrl = getClass().getResource("/assets/sfx/loss.wav");
-            if (lossUrl != null) {
-                lossClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(lossUrl)) {
-                    lossClip.open(ais);
-                }
-                clipGains.put(lossClip, 1.0);
-                applyVolume(lossClip, sfxVolume);
-            }
-
-            java.net.URL winUrl = getClass().getResource("/assets/sfx/win.wav");
-            if (winUrl != null) {
-                winClip = AudioSystem.getClip();
-                try (AudioInputStream ais = AudioSystem.getAudioInputStream(winUrl)) {
-                    winClip.open(ais);
-                }
-                clipGains.put(winClip, 1.0);
-                applyVolume(winClip, sfxVolume);
-            }
-
-            loadCharacterSelectClip("CRUSADER", "/assets/sfx/char_selection/crusader.wav");
-            loadCharacterSelectClip("HIGHWAYMAN", "/assets/sfx/char_selection/highwayman.wav");
-            loadCharacterSelectClip("JESTER", "/assets/sfx/char_selection/jester.wav");
-            loadCharacterSelectClip("OCCULTIST", "/assets/sfx/char_selection/occultist.wav");
-            loadCharacterSelectClip("PLAGUEDOCTOR", "/assets/sfx/char_selection/plague_doctor.wav");
-        } catch (Exception ignore) {}
+        } catch (Exception e) {}
+        return null;
     }
 
     private void loadCharacterSelectClip(String id, String resourcePath) {
-        try {
-            java.net.URL url = getClass().getResource(resourcePath);
-            if (url == null) return;
-            Clip clip = AudioSystem.getClip();
-            try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
-                clip.open(ais);
-                clipGains.put(clip, "PLAGUEDOCTOR".equals(id) ? 0.3 : 1.0);
-                applyVolume(clip, sfxVolume);
-            }
+        double gain = "PLAGUEDOCTOR".equals(id) ? 0.3 : 1.0;
+        Clip clip = loadClip(resourcePath, gain);
+        if (clip != null) {
             charSelectClips.put(id, clip);
-        } catch (Exception ignore) {}
+        }
     }
 
     public static SoundManager getInstance() { return INSTANCE; }
@@ -191,312 +91,162 @@ public class SoundManager {
         if (muted) return;
         long now = System.currentTimeMillis();
         if (now - lastInvalidClickMs < invalidCooldownMs) return;
-        if (invalidClickClip != null) {
-            try {
-                if (invalidClickClip.isRunning()) invalidClickClip.stop();
-                invalidClickClip.setFramePosition(0);
-                invalidClickClip.start();
-                lastInvalidClickMs = now;
-            } catch (Exception ignore) {}
-        }
+        playClip(invalidClickClip);
+        lastInvalidClickMs = now;
     }
 
-    public void setSfxVolume(double v) {
-        sfxVolume = Math.max(0.0, Math.min(1.0, v));
-        if (invalidClickClip != null) applyVolume(invalidClickClip, sfxVolume);
-        if (healClip != null) applyVolume(healClip, sfxVolume);
-        if (hintClip != null) applyVolume(hintClip, sfxVolume);
-        if (sacrificeClip != null) applyVolume(sacrificeClip, sfxVolume);
-        if (scoreClip != null) applyVolume(scoreClip, sfxVolume);
-        if (characterSelectionClip != null) applyVolume(characterSelectionClip, sfxVolume);
-        if (settingsClip != null) applyVolume(settingsClip, sfxVolume);
-        if (winSelectItemClip != null) applyVolume(winSelectItemClip, sfxVolume);
-        if (numberClickClip != null) applyVolume(numberClickClip, sfxVolume);
-        if (correctClip != null) applyVolume(correctClip, sfxVolume);
-        if (errorClip != null) applyVolume(errorClip, sfxVolume);
-        if (lossClip != null) applyVolume(lossClip, sfxVolume);
-        if (winClip != null) applyVolume(winClip, sfxVolume);
-        for (Clip c : charSelectClips.values()) applyVolume(c, sfxVolume);
+    public void playHeal() { playClip(healClip); }
+    public void playHint() { playClip(hintClip); }
+    public void playSacrifice() { playClip(sacrificeClip); }
+    public void playScore() { playClip(scoreClip); }
+    public void playCharacterSelection() { playClip(characterSelectionClip); }
+    public void playSettings() { playClip(settingsClip); }
+    public void playWinSelectItem() { playClip(winSelectItemClip); }
+    public void playNumberClick() { playClip(numberClickClip); }
+    public void playCorrect() { playClip(correctClip); }
+    public void playError() { playClip(errorClip); }
+    public void playLoss() { playClip(lossClip); }
+    public void playWin() { playClip(winClip); }
+    
+    public void playSettingsToggle() { playSettings(); }
+    public void playWinItemSelection() { playWinSelectItem(); }
+
+    public void playCharacterName(String charId) {
+        if (muted || charId == null) return;
+        Clip clip = charSelectClips.get(charId);
+        playClip(clip);
+    }
+    
+    public void playCharacterSelectFor(String charId, Runnable onComplete) {
+        playCharacterName(charId);
+        long delay = 2000;
+        new Thread(() -> {
+            try { Thread.sleep(delay); } catch (InterruptedException e) {}
+            if (onComplete != null) javafx.application.Platform.runLater(onComplete);
+        }).start();
+    }
+    
+    /**
+     * Plays background music for a specific level category.
+     * Selects the appropriate music track based on the dungeon type (e.g., RUINS, COVE).
+     *
+     * @param category The level category (e.g., "RUINS", "COVE").
+     */
+    public void playLevelMusicForCategory(String category) {
+        String path = "/assets/music/town/town1.wav"; 
+        if ("RUINS".equalsIgnoreCase(category)) path = "/assets/music/crypts/crypts1.wav";
+        else if ("COVE".equalsIgnoreCase(category)) path = "/assets/music/cove/cove1.wav";
+        else if ("WARRENS".equalsIgnoreCase(category)) path = "/assets/music/warrens/warrens1.wav";
+        else if ("WEALD".equalsIgnoreCase(category)) path = "/assets/music/weald/weald1.wav";
+        
+        startMusic(path);
+    }
+    
+    public void playHomeMusic() {
+        startMusic("/assets/music/home_screen/home_screen.wav");
     }
 
-    public double getSfxVolume() { return sfxVolume; }
-
-    public void mute(boolean m) {
-        muted = m;
-    }
-
-    private void applyVolume(Clip clip, double vol) {
+    private void playClip(Clip clip) {
+        if (muted || clip == null) return;
         try {
-            FloatControl ctl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-            double base = (clip == musicClip) ? BASE_MUSIC_GAIN : BASE_SFX_GAIN;
-            double gain = base * clipGains.getOrDefault(clip, 1.0);
-            double effective = muted ? 0.0 : (vol * gain);
-            double clamped = Math.max(0.0001, Math.min(1.0, effective));
-            float dB = (float) (20.0 * Math.log10(clamped));
-            dB = Math.max(ctl.getMinimum(), Math.min(ctl.getMaximum(), dB));
-            ctl.setValue(dB);
+            if (clip.isRunning()) clip.stop();
+            clip.setFramePosition(0);
+            clip.start();
         } catch (Exception ignore) {}
     }
 
-    public void playHeal() {
-        if (muted) return;
-        if (healClip != null) {
-            try { if (healClip.isRunning()) healClip.stop(); } catch (Exception ignore) {}
-            try { healClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { healClip.start(); } catch (Exception ignore) {}
+    public void startMusic(String resourcePath) {
+        if (musicClip != null && musicClip.isRunning()) {
+            musicClip.stop();
         }
-    }
-
-    public void playHint() {
-        if (muted) return;
-        if (hintClip != null) {
-            try { if (hintClip.isRunning()) hintClip.stop(); } catch (Exception ignore) {}
-            try { hintClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { hintClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playSacrifice() {
-        if (muted) return;
-        if (sacrificeClip != null) {
-            try { if (sacrificeClip.isRunning()) sacrificeClip.stop(); } catch (Exception ignore) {}
-            try { sacrificeClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { sacrificeClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playScore() {
-        if (muted) return;
-        if (scoreClip != null) {
-            try { if (scoreClip.isRunning()) scoreClip.stop(); } catch (Exception ignore) {}
-            try { scoreClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { scoreClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playCharacterSelection() {
-        if (muted) return;
-        if (characterSelectionClip != null) {
-            try { if (characterSelectionClip.isRunning()) characterSelectionClip.stop(); } catch (Exception ignore) {}
-            try { characterSelectionClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { characterSelectionClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playSettingsToggle() {
-        if (muted) return;
-        if (settingsClip != null) {
-            try { if (settingsClip.isRunning()) settingsClip.stop(); } catch (Exception ignore) {}
-            try { settingsClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { settingsClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playWinItemSelection() {
-        if (muted) return;
-        if (winSelectItemClip != null) {
-            try { if (winSelectItemClip.isRunning()) winSelectItemClip.stop(); } catch (Exception ignore) {}
-            try { winSelectItemClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { winSelectItemClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playNumberClick() {
-        if (muted) return;
-        if (numberClickClip != null) {
-            try { if (numberClickClip.isRunning()) numberClickClip.stop(); } catch (Exception ignore) {}
-            try { numberClickClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { numberClickClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playCorrect() {
-        if (muted) return;
-        if (correctClip != null) {
-            try { if (correctClip.isRunning()) correctClip.stop(); } catch (Exception ignore) {}
-            try { correctClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { correctClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playError() {
-        if (muted) return;
-        if (errorClip != null) {
-            try { if (errorClip.isRunning()) errorClip.stop(); } catch (Exception ignore) {}
-            try { errorClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { errorClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playLoss() {
-        if (muted) return;
-        if (lossClip != null) {
-            try { if (lossClip.isRunning()) lossClip.stop(); } catch (Exception ignore) {}
-            try { lossClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { lossClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playWin() {
-        if (muted) return;
-        if (winClip != null) {
-            try { if (winClip.isRunning()) winClip.stop(); } catch (Exception ignore) {}
-            try { winClip.setFramePosition(0); } catch (Exception ignore) {}
-            try { winClip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playCharacterSelectFor(String id) {
-        if (muted) return;
-        Clip clip = charSelectClips.get(id);
-        if (clip != null) {
-            try { if (clip.isRunning()) clip.stop(); } catch (Exception ignore) {}
-            try { clip.setFramePosition(0); } catch (Exception ignore) {}
-            try { clip.start(); } catch (Exception ignore) {}
-        }
-    }
-
-    public void playCharacterSelectFor(String id, Runnable onFinished) {
-        if (muted) {
-            if (onFinished != null) { try { javafx.application.Platform.runLater(onFinished); } catch (Exception ignore) {} }
-            return;
-        }
-        Clip clip = charSelectClips.get(id);
-        if (clip != null) {
-            try { if (clip.isRunning()) clip.stop(); } catch (Exception ignore) {}
-            try { clip.setFramePosition(0); } catch (Exception ignore) {}
-            try {
-                clip.addLineListener(ev -> {
-                    if (ev != null && ev.getType() == javax.sound.sampled.LineEvent.Type.STOP) {
-                        if (onFinished != null) { try { javafx.application.Platform.runLater(onFinished); } catch (Exception ignore) {} }
-                    }
-                });
-                clip.start();
-            } catch (Exception ignore) {}
-        } else {
-            if (onFinished != null) { try { javafx.application.Platform.runLater(onFinished); } catch (Exception ignore) {} }
-        }
+        try {
+            java.net.URL url = getClass().getResource(resourcePath);
+            if (url != null) {
+                musicClip = AudioSystem.getClip();
+                try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
+                    musicClip.open(ais);
+                }
+                applyVolume(musicClip, musicVolume);
+                musicClip.loop(Clip.LOOP_CONTINUOUSLY);
+                if (muted) {
+                    javax.sound.sampled.BooleanControl muteControl = (javax.sound.sampled.BooleanControl) musicClip.getControl(javax.sound.sampled.BooleanControl.Type.MUTE);
+                    muteControl.setValue(true);
+                }
+            }
+        } catch (Exception ignore) {}
     }
 
     public void stopMusic() {
-        if (musicClip != null) {
-            try { musicClip.stop(); } catch (Exception ignore) {}
-            try { musicClip.close(); } catch (Exception ignore) {}
-            musicClip = null;
+        if (musicClip != null && musicClip.isRunning()) {
+            musicClip.stop();
         }
     }
 
     public void fadeOutMusic(int durationMs) {
-        final Clip target = musicClip;
-        if (target == null) return;
-        new Thread(() -> {
-            int d = Math.max(50, durationMs);
-            double start = muted ? 0.0 : musicVolume;
-            double end = 0.0001;
-            int steps = 20;
-            long sleep = d / steps;
-            for (int i = 0; i < steps; i++) {
-                double t = (double) (i + 1) / steps;
-                double v = start + (end - start) * t;
-                applyVolume(target, v);
-                try { Thread.sleep(sleep); } catch (InterruptedException ignore) {}
-            }
-            try { target.stop(); } catch (Exception ignore) {}
-            try { target.close(); } catch (Exception ignore) {}
-            if (musicClip == target) {
-                musicClip = null;
-            }
-        }).start();
+        if (musicClip == null || !musicClip.isRunning()) return;
+        musicClip.stop();
     }
 
-    public void setMusicVolume(double v) {
-        musicVolume = Math.max(0.0, Math.min(1.0, v));
-        if (musicClip != null) applyVolume(musicClip, muted ? 0.0 : musicVolume);
+    public void setMuted(boolean muted) {
+        this.muted = muted;
+        if (musicClip != null) {
+            try {
+                 javax.sound.sampled.BooleanControl muteControl = (javax.sound.sampled.BooleanControl) musicClip.getControl(javax.sound.sampled.BooleanControl.Type.MUTE);
+                 muteControl.setValue(muted);
+            } catch (Exception ignore) {}
+        }
+    }
+
+    public boolean isMuted() { return muted; }
+
+    public void setSfxVolume(double volume) {
+        this.sfxVolume = Math.max(0.0, Math.min(1.0, volume));
+        updateLoadedClipsVolume();
+    }
+
+    public double getSfxVolume() { return sfxVolume; }
+
+    public void setMusicVolume(double volume) {
+        this.musicVolume = Math.max(0.0, Math.min(1.0, volume));
+        if (musicClip != null) {
+            applyVolume(musicClip, musicVolume);
+        }
     }
 
     public double getMusicVolume() { return musicVolume; }
 
-    public void playLevelMusicForCategory(String category) {
-        if (category == null) return;
-        stopMusic();
-        if (muted) return;
-        String base;
-        if ("levels".equalsIgnoreCase(category)) {
-            String[] cats = new String[]{"cove", "warrens", "weald"};
-            base = "/assets/music/" + cats[new java.util.Random().nextInt(cats.length)] + "/";
-        } else {
-            base = "/assets/music/" + category + "/";
+    private void updateLoadedClipsVolume() {
+        applyVolume(invalidClickClip, sfxVolume);
+        applyVolume(healClip, sfxVolume);
+        applyVolume(hintClip, sfxVolume);
+        applyVolume(sacrificeClip, sfxVolume);
+        applyVolume(scoreClip, sfxVolume);
+        applyVolume(characterSelectionClip, sfxVolume);
+        applyVolume(settingsClip, sfxVolume);
+        applyVolume(winSelectItemClip, sfxVolume);
+        applyVolume(numberClickClip, sfxVolume);
+        applyVolume(correctClip, sfxVolume);
+        applyVolume(errorClip, sfxVolume);
+        applyVolume(lossClip, sfxVolume);
+        applyVolume(winClip, sfxVolume);
+        for (Clip c : charSelectClips.values()) {
+            applyVolume(c, sfxVolume);
         }
-        java.util.List<String> files = listAudioFiles(base);
-        if (files.isEmpty()) return;
-        String pick = files.get(new java.util.Random().nextInt(files.size()));
-        try {
-            java.net.URL url = getClass().getResource(pick);
-            if (url == null) return;
-            musicClip = AudioSystem.getClip();
-            try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) { musicClip.open(ais); }
-            clipGains.put(musicClip, 1.0);
-            applyVolume(musicClip, 0.0001);
-            musicClip.loop(Clip.LOOP_CONTINUOUSLY);
-            musicClip.start();
-            fadeInCurrentMusic(800);
-        } catch (Exception ignore) {}
     }
 
-
-    public void playHomeMusic() {
-        stopMusic();
-        if (muted) return;
-        String base = "/assets/music/home_screen/";
-        java.util.List<String> files = listAudioFiles(base);
-        if (files.isEmpty()) return;
-        String pick = files.get(new java.util.Random().nextInt(files.size()));
+    private void applyVolume(Clip clip, double masterVolume) {
+        if (clip == null) return;
         try {
-            java.net.URL url = getClass().getResource(pick);
-            if (url == null) return;
-            musicClip = AudioSystem.getClip();
-            try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
-                musicClip.open(ais);
+            FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+            double gainMult = clipGains.getOrDefault(clip, 1.0);
+            double effectiveVolume = masterVolume * gainMult * (clip == musicClip ? BASE_MUSIC_GAIN : BASE_SFX_GAIN);
+            if (effectiveVolume <= 0.0001) {
+                gainControl.setValue(gainControl.getMinimum());
+            } else {
+                float db = (float) (20.0 * Math.log10(effectiveVolume));
+                gainControl.setValue(Math.max(gainControl.getMinimum(), Math.min(gainControl.getMaximum(), db)));
             }
-            clipGains.put(musicClip, 1.0);
-            applyVolume(musicClip, 0.0001);
-            musicClip.loop(Clip.LOOP_CONTINUOUSLY);
-            musicClip.start();
-            fadeInCurrentMusic(2000);
+        } catch (IllegalArgumentException e) {
         } catch (Exception ignore) {}
-    }
-
-    private void fadeInCurrentMusic(int durationMs) {
-        if (musicClip == null) return;
-        if (muted) return;
-        new Thread(() -> {
-            int d = Math.max(50, durationMs);
-            double start = 0.0001;
-            double end = musicVolume;
-            int steps = 20;
-            long sleep = d / steps;
-            for (int i = 0; i < steps; i++) {
-                double t = (double) (i + 1) / steps;
-                double v = start + (end - start) * t;
-                applyVolume(musicClip, v);
-                try { Thread.sleep(sleep); } catch (InterruptedException ignore) {}
-            }
-        }).start();
-    }
-
-    private java.util.List<String> listAudioFiles(String basePath) {
-        java.util.List<String> out = new java.util.ArrayList<>();
-        try {
-            java.net.URL url = getClass().getResource(basePath);
-            if (url == null) return out;
-            java.nio.file.Path dir = java.nio.file.Paths.get(url.toURI());
-            try (java.util.stream.Stream<java.nio.file.Path> s = java.nio.file.Files.list(dir)) {
-                s.filter(java.nio.file.Files::isRegularFile)
-                 .map(p -> basePath + p.getFileName().toString())
-                 .filter(f -> f.toLowerCase().endsWith(".wav"))
-                 .forEach(out::add);
-            }
-        } catch (Exception ignore) {}
-        return out;
     }
 }

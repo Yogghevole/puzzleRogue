@@ -14,7 +14,8 @@ import javafx.scene.layout.HBox;
 import view.util.ModalUtils;
 
 /**
- * Gestisce il modal delle impostazioni in-game.
+ * Manages the in-game settings menu (pause menu).
+ * Allows the user to adjust volume, save and exit, or cheat (win level).
  */
 public class InGameSettingsManager {
     private final StackPane modalContainer;
@@ -101,9 +102,14 @@ public class InGameSettingsManager {
 
             ImageView saveIcon = createMenuIcon("/assets/menu/save.png", () -> { if (onSaveAndExit != null) onSaveAndExit.run(); });
             ImageView winIcon  = createMenuIcon("/assets/menu/win_level.png", () -> { if (onWinLevel != null) onWinLevel.run(); });
-            try { javafx.scene.layout.VBox.setMargin(saveIcon, new javafx.geometry.Insets(20, 0, 0, 0)); } catch (Exception ignore) {}
+            
+            VBox buttonsBox = new VBox(15.0);
+            buttonsBox.setAlignment(Pos.CENTER);
+            buttonsBox.getChildren().addAll(saveIcon, winIcon);
+            
+            try { VBox.setMargin(buttonsBox, new javafx.geometry.Insets(60, 0, 0, 0)); } catch (Exception ignore) {}
 
-        HBox sfxRow = new HBox(16.0);
+            HBox sfxRow = new HBox(16.0);
         sfxRow.setAlignment(Pos.CENTER);
         Label sfxLabel = new Label("SFX Volume");
         sfxLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
@@ -138,7 +144,7 @@ public class InGameSettingsManager {
         musicSlider.valueChangingProperty().addListener((obs, was, is) -> view.manager.SoundManager.getInstance().setMusicVolume(musicSlider.getValue()));
         musicRow.getChildren().addAll(musicLabel, musicSlider);
 
-            content.getChildren().addAll(sfxRow, musicRow, saveIcon, winIcon);
+            content.getChildren().addAll(sfxRow, musicRow, buttonsBox);
             content.setPickOnBounds(false);
             StackPane.setAlignment(content, Pos.CENTER);
             panel.getChildren().add(content);

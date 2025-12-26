@@ -35,13 +35,18 @@ public class EnemySpriteManager {
         view.setTranslateX(shift);
     }
 
-    public void spawnForLevel(ImageView view,
+    /**
+     * Spawns an enemy for the current level based on difficulty.
+     * Selects a random enemy sprite appropriate for the level's difficulty and updates the view.
+     */
+    
+    public String spawnForLevel(ImageView view,
                               Label difficultyLabel,
                               GameDataService gameDataService,
                               int currentLevel,
                               java.util.Set<String> usedEnemyGlobal,
                               java.util.Random rng) {
-        if (view == null || gameDataService == null) return;
+        if (view == null || gameDataService == null) return null;
         String difficulty = (difficultyLabel != null) ? difficultyLabel.getText() : null;
         if (difficulty == null || difficulty.isEmpty()) {
             difficulty = gameDataService.getBaseDifficultyByLevel(currentLevel);
@@ -53,8 +58,10 @@ public class EnemySpriteManager {
         if (enemySpritePath != null) {
             Image img = new Image(getClass().getResourceAsStream(enemySpritePath));
             applyTo(view, img, enemySpritePath);
+            return enemySpritePath;
         } else {
             view.setVisible(false);
+            return null;
         }
     }
 

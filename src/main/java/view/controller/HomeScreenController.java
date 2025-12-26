@@ -2,10 +2,20 @@ package view.controller;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.Slider;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.scene.Group;
+import javafx.scene.effect.Glow;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.effect.Blend;
+import javafx.scene.effect.BlendMode;
+import javafx.scene.paint.Color;
+import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import model.service.GameDataService;
 import model.service.RunService;
 import view.util.StageUtils;
@@ -13,14 +23,22 @@ import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 import view.util.ModalUtils;
 
+/**
+ * Controller for the main menu screen.
+ * Provides access to new runs, legacy upgrades, and settings.
+ */
 public class HomeScreenController {
     
-    @FXML private VBox mainContainer;
-    @FXML private Button continueButton;
-    @FXML private Button newExpeditionButton;
-    @FXML private Button reliquaryButton;
+    @FXML private StackPane mainContainer;
+    @FXML private ImageView continueButton;
+    @FXML private ImageView newExpeditionButton;
+    @FXML private ImageView reliquaryButton;
     @FXML private ImageView settingsIcon;
     @FXML private StackPane optionsModalContainer;
+    @FXML private javafx.scene.control.Label nickLabel;
+    @FXML private javafx.scene.control.Label pointsLabel;
+    
+    private final view.manager.UserInfoManager userInfoManager = new view.manager.UserInfoManager();
     
     private GameDataService gameDataService;
     private RunService runService;
@@ -31,6 +49,7 @@ public class HomeScreenController {
         runService = new RunService();
         
         setupUI();
+        userInfoManager.setup(nickLabel, pointsLabel);
         checkContinueButtonState();
         setupButtonListeners();
 
@@ -57,10 +76,44 @@ public class HomeScreenController {
         String settingsIconPath = "/assets/icons/utils/settings.png";
         Image settingsImage = new Image(getClass().getResourceAsStream(settingsIconPath));
         settingsIcon.setImage(settingsImage);
-        settingsIcon.setFitWidth(48);
-        settingsIcon.setFitHeight(48);
+        settingsIcon.setFitWidth(75);
+        settingsIcon.setFitHeight(75);
         settingsIcon.setPreserveRatio(true);
+        settingsIcon.setOnMouseEntered(e -> {
+            Glow glow = new Glow(0.35);
+            DropShadow shadow = new DropShadow();
+            shadow.setRadius(6.0);
+            shadow.setSpread(0.1);
+            shadow.setColor(Color.web("#ffffff88"));
+            settingsIcon.setEffect(new Blend(BlendMode.SRC_OVER, glow, shadow));
+        });
+        settingsIcon.setOnMouseExited(e -> settingsIcon.setEffect(null));
+        
+        addHoverEffect(continueButton);
+        addHoverEffect(newExpeditionButton);
+        addHoverEffect(reliquaryButton);
+
         try { view.manager.SoundManager.getInstance().playHomeMusic(); } catch (Exception ignore) {}
+    }
+
+    private void addHoverEffect(ImageView view) {
+        view.setOnMouseEntered(e -> {
+            if (!view.isDisable()) {
+                Glow glow = new Glow(0.3);
+                DropShadow shadow = new DropShadow();
+                shadow.setRadius(15.0);
+                shadow.setSpread(0.2);
+                shadow.setColor(Color.web("#ffffff66"));
+                view.setEffect(new Blend(BlendMode.SRC_OVER, glow, shadow));
+                view.setScaleX(1.05);
+                view.setScaleY(1.05);
+            }
+        });
+        view.setOnMouseExited(e -> {
+            view.setEffect(null);
+            view.setScaleX(1.0);
+            view.setScaleY(1.0);
+        });
     }
     
     private void checkContinueButtonState() {
@@ -68,37 +121,25 @@ public class HomeScreenController {
         
         if (hasActiveRun) {
             continueButton.setDisable(false);
-            continueButton.setStyle("-fx-opacity: 1.0; -fx-text-fill: #FFFFFF;");
+            continueButton.setOpacity(1.0);
         } else {
             continueButton.setDisable(true);
-            continueButton.setStyle("-fx-opacity: 0.5; -fx-text-fill: #808080;");
+            continueButton.setOpacity(0.6);
         }
     }
     
     private void setupButtonListeners() {
-        continueButton.setOnAction(event -> {
+        continueButton.setOnMouseClicked(event -> {
             if (!continueButton.isDisable()) {
                 handleContinueExpedition();
             }
         });
 
-        newExpeditionButton.setOnAction(event -> {
-            newExpeditionButton.setStyle(newExpeditionButton.getStyle() + "; -fx-scale-x: 0.95; -fx-scale-y: 0.95;");
-            new Thread(() -> {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-                javafx.application.Platform.runLater(() -> {
-                    newExpeditionButton.setStyle(newExpeditionButton.getStyle().replace("; -fx-scale-x: 0.95; -fx-scale-y: 0.95;", ""));
-                    handleNewExpedition();
-                });
-            }).start();
+        newExpeditionButton.setOnMouseClicked(event -> {
+            handleNewExpedition();
         });
 
-        reliquaryButton.setOnAction(event -> handleReliquary());
+        reliquaryButton.setOnMouseClicked(event -> handleReliquary());
         settingsIcon.setOnMouseClicked(event -> handleSettings());
     }
     private boolean resumeLastRun() {
@@ -117,7 +158,7 @@ public class HomeScreenController {
 
     private void startNewRun() {
         try {
-            runService.startNewRun();
+            runService = new RunService();
             navigateToGameView();
         } catch (Exception e) {
             System.err.println("Errore nell'avvio di una nuova run: " + e.getMessage());
@@ -140,55 +181,165 @@ public class HomeScreenController {
         try {
             ModalUtils.show(optionsModalContainer, ModalUtils.Type.DEFAULT);
             try { view.manager.SoundManager.getInstance().playSettingsToggle(); } catch (Exception ignore) {}
-            AnchorPane panel = new AnchorPane();
-            panel.setPrefSize(mainContainer.getWidth(), mainContainer.getHeight());
-            javafx.scene.image.Image bg = new javafx.scene.image.Image(getClass().getResourceAsStream("/assets/icons/help/help.background.png"));
-            javafx.scene.image.ImageView bgView = new javafx.scene.image.ImageView(bg);
-            bgView.setFitWidth(mainContainer.getWidth());
-            bgView.setFitHeight(mainContainer.getHeight());
-            bgView.setPreserveRatio(false);
-            panel.getChildren().add(bgView);
+            
+            try {
+                optionsModalContainer.prefWidthProperty().unbind();
+                optionsModalContainer.prefHeightProperty().unbind();
+            } catch (Exception ignore) {}
+            
+            if (mainContainer.getScene() != null) {
+                optionsModalContainer.prefWidthProperty().bind(mainContainer.getScene().widthProperty());
+                optionsModalContainer.prefHeightProperty().bind(mainContainer.getScene().heightProperty());
+            }
 
-            Button closeButton = new Button("X");
-            closeButton.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-size: 16; -fx-background-radius: 16;");
-            AnchorPane.setTopAnchor(closeButton, 20.0);
-            AnchorPane.setRightAnchor(closeButton, 20.0);
-            closeButton.setOnAction(e -> { try { view.manager.SoundManager.getInstance().playSettingsToggle(); } catch (Exception ignore) {} ModalUtils.hideAndClear(optionsModalContainer); });
-            panel.getChildren().add(closeButton);
+            optionsModalContainer.setPickOnBounds(true);
+            try { optionsModalContainer.setMouseTransparent(false); } catch (Exception ignore) {}
 
-            VBox content = new VBox(12.0);
-            content.setAlignment(javafx.geometry.Pos.CENTER);
-            Button logoutBtn = new Button("Esci dall'account");
-            Button quitBtn = new Button("Esci dal gioco");
-            logoutBtn.setOnAction(e -> { ModalUtils.hideAndClear(optionsModalContainer); handleLogout(); });
-            quitBtn.setOnAction(e -> handleQuit());
-            content.getChildren().addAll(logoutBtn, quitBtn);
-            AnchorPane.setTopAnchor(content, 0.0);
-            AnchorPane.setBottomAnchor(content, 0.0);
-            AnchorPane.setLeftAnchor(content, 0.0);
-            AnchorPane.setRightAnchor(content, 0.0);
+            StackPane panel = new StackPane();
+            panel.setPickOnBounds(true);
+            panel.prefWidthProperty().bind(optionsModalContainer.widthProperty());
+            panel.prefHeightProperty().bind(optionsModalContainer.heightProperty());
+
+            Image bg = new Image(getClass().getResourceAsStream("/assets/icons/help/help.background.png"));
+            ImageView bgView = new ImageView(bg);
+            bgView.setPreserveRatio(true);
+            double bgW = bg.getWidth() * 0.8;
+            double bgH = bg.getHeight() * 0.8;
+            bgView.setFitWidth(bgW);
+            bgView.setFitHeight(bgH);
+
+            Group bgGroup = new Group();
+            bgGroup.getChildren().add(bgView);
+
+            Image closeImg = new Image(getClass().getResourceAsStream("/assets/icons/utils/x.png"));
+            ImageView closeIcon = new ImageView(closeImg);
+            closeIcon.setPreserveRatio(true);
+            closeIcon.setFitWidth(36);
+            try { closeIcon.setCursor(null); } catch (Exception ignore) {}
+            closeIcon.setOnMouseEntered(ev -> {
+                Glow glow = new Glow(0.6);
+                DropShadow shadow = new DropShadow();
+                shadow.setRadius(8);
+                shadow.setSpread(0.18);
+                shadow.setColor(Color.web("#ff2b2baa"));
+                closeIcon.setEffect(new Blend(BlendMode.SRC_OVER, glow, shadow));
+            });
+            closeIcon.setOnMouseExited(ev -> closeIcon.setEffect(null));
+            closeIcon.setOnMouseClicked(ev -> { 
+                try { view.manager.SoundManager.getInstance().playSettingsToggle(); } catch (Exception ignore) {}
+                ModalUtils.hideAndClear(optionsModalContainer); 
+            });
+            
+            double margin = 16;
+            double offsetLeft = 63; 
+            double offsetDown = 83; 
+            StackPane.setAlignment(closeIcon, Pos.CENTER);
+            closeIcon.setTranslateX((bgW / 2.0) - closeIcon.getFitWidth() - margin - offsetLeft);
+            closeIcon.setTranslateY((-bgH / 2.0) + margin + offsetDown);
+
+            StackPane.setAlignment(bgGroup, Pos.CENTER);
+            panel.getChildren().add(bgGroup);
+
+            VBox content = new VBox(20.0);
+            content.setAlignment(Pos.CENTER);
+
+            HBox sfxRow = new HBox(16.0);
+            sfxRow.setAlignment(Pos.CENTER);
+            Label sfxLabel = new Label("SFX Volume");
+            sfxLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+            sfxLabel.setPrefWidth(170);
+            sfxLabel.setMinWidth(170);
+            sfxLabel.setMaxWidth(170);
+            Slider sfxSlider = new Slider(0.0, 1.0, view.manager.SoundManager.getInstance().getSfxVolume());
+            sfxSlider.setPrefWidth(320);
+            sfxSlider.setMinWidth(320);
+            sfxSlider.setMaxWidth(320);
+            sfxSlider.setStyle("-fx-accent: #FFCC00;");
+            sfxSlider.setShowTickLabels(false);
+            sfxSlider.setShowTickMarks(false);
+            sfxSlider.valueProperty().addListener((obs, o, n) -> view.manager.SoundManager.getInstance().setSfxVolume(n.doubleValue()));
+            sfxRow.getChildren().addAll(sfxLabel, sfxSlider);
+
+            HBox musicRow = new HBox(16.0);
+            musicRow.setAlignment(Pos.CENTER);
+            Label musicLabel = new Label("Music Volume");
+            musicLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+            musicLabel.setPrefWidth(170);
+            musicLabel.setMinWidth(170);
+            musicLabel.setMaxWidth(170);
+            Slider musicSlider = new Slider(0.0, 1.0, view.manager.SoundManager.getInstance().getMusicVolume());
+            musicSlider.setPrefWidth(320);
+            musicSlider.setMinWidth(320);
+            musicSlider.setMaxWidth(320);
+            musicSlider.setStyle("-fx-accent: #FFCC00;");
+            musicSlider.setShowTickLabels(false);
+            musicSlider.setShowTickMarks(false);
+            musicSlider.valueProperty().addListener((obs, o, n) -> view.manager.SoundManager.getInstance().setMusicVolume(n.doubleValue()));
+            musicSlider.valueChangingProperty().addListener((obs, was, is) -> view.manager.SoundManager.getInstance().setMusicVolume(musicSlider.getValue()));
+            musicRow.getChildren().addAll(musicLabel, musicSlider);
+
+            ImageView logoutIcon = createMenuIcon("/assets/menu/logOut.png", () -> { 
+                ModalUtils.hideAndClear(optionsModalContainer); 
+                handleLogout(); 
+            });
+            ImageView exitIcon = createMenuIcon("/assets/menu/exitGame.png", () -> { 
+                handleQuit(); 
+            });
+            
+            VBox buttonsBox = new VBox(25.0);
+            buttonsBox.setAlignment(Pos.CENTER);
+            buttonsBox.getChildren().addAll(logoutIcon, exitIcon);
+            
+            try { VBox.setMargin(buttonsBox, new Insets(60, 0, 0, 0)); } catch (Exception ignore) {}
+
+            content.getChildren().addAll(sfxRow, musicRow, buttonsBox);
+            content.setPickOnBounds(false);
+            StackPane.setAlignment(content, Pos.CENTER);
             panel.getChildren().add(content);
+
+            double shiftX = 15; 
+            double shiftY = -30; 
+            bgGroup.setTranslateX(shiftX);
+            bgGroup.setTranslateY(shiftY);
+            content.setTranslateX(shiftX);
+            content.setTranslateY(shiftY);
+            closeIcon.setTranslateX(closeIcon.getTranslateX() + shiftX);
+            closeIcon.setTranslateY(closeIcon.getTranslateY() + shiftY);
+
+            panel.getChildren().add(closeIcon);
 
             optionsModalContainer.getChildren().add(panel);
         } catch (Exception ex) {
             System.err.println("Errore apertura menu impostazioni: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
+    private ImageView createMenuIcon(String resourcePath, Runnable onClick) {
+        Image img = new Image(getClass().getResourceAsStream(resourcePath));
+        ImageView icon = new ImageView(img);
+        icon.setPreserveRatio(true);
+        icon.setFitWidth(240);
+        try { icon.setCursor(null); } catch (Exception ignore) {}
+        icon.setOnMouseEntered(ev -> {
+            Glow glow = new Glow(0.6);
+            DropShadow shadow = new DropShadow();
+            shadow.setRadius(9);
+            shadow.setSpread(0.2);
+            shadow.setColor(Color.web("#ffffffaa"));
+            icon.setEffect(new Blend(BlendMode.SRC_OVER, glow, shadow));
+        });
+        icon.setOnMouseExited(ev -> icon.setEffect(null));
+        icon.setOnMouseClicked(ev -> { if (onClick != null) onClick.run(); });
+        return icon;
+    }
+
     private void handleContinueExpedition() {
-        String lastChar = model.service.SessionService.getLastSelectedCharacter();
-        if (lastChar != null && !lastChar.isEmpty()) {
-            if (runService == null) runService = new RunService();
-            boolean ok = runService.startNewRunWithCharacter(lastChar);
-            if (ok) {
-                navigateToGameView();
-                return;
-            }
-        }
         boolean success = resumeLastRun();
         if (success) {
             navigateToGameScreen();
         } else {
+            
             navigateToCharacterSelection();
         }
     }
@@ -232,6 +383,7 @@ public class HomeScreenController {
             javafx.scene.layout.BorderPane gameRoot = loader.load();
             GameController gameController = loader.getController();
             gameController.setRunService(runService);
+            gameController.startGame();
             Stage stage = (Stage) mainContainer.getScene().getWindow();
             StageUtils.setSceneRoot(stage, gameRoot);
         } catch (Exception e) {
@@ -246,6 +398,7 @@ public class HomeScreenController {
             javafx.scene.layout.BorderPane gameRoot = loader.load();
             GameController gameController = loader.getController();
             gameController.setRunService(runService);
+            gameController.startGame();
             Stage stage = (Stage) mainContainer.getScene().getWindow();
             StageUtils.setSceneRoot(stage, gameRoot);
             

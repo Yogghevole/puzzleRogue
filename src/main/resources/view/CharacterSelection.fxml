@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<!-- Screen for selecting a character before starting a new game. -->
+
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
@@ -20,7 +22,6 @@
         <Insets top="32.0" bottom="32.0" left="32.0" right="32.0"/>
     </padding>
     
-    <!-- Titolo -->
     <Label text="Choose Your Hero" 
            style="-fx-text-fill: #FFFFFF; -fx-font-size: 32px; -fx-font-weight: bold;">
         <font>
@@ -28,14 +29,12 @@
         </font>
     </Label>
     
-    <!-- Container per i personaggi -->
     <HBox fx:id="charactersContainer" 
           alignment="CENTER" 
           spacing="20.0"
           VBox.vgrow="ALWAYS">
     </HBox>
     
-    <!-- Pulsanti di azione -->
     <HBox alignment="CENTER" spacing="20.0">
         <Button fx:id="backButton" 
                 text="Back" 
@@ -61,7 +60,6 @@
         </Button>
     </HBox>
     
-    <!-- Stili CSS -->
     <stylesheets>
         <String fx:value="/style.css"/>
     </stylesheets>

@@ -11,6 +11,9 @@ import model.service.RunService;
 import javafx.scene.layout.BorderPane;
 import view.controller.GameController;
 
+/**
+ * Primary JavaFX application class responsible for initialization and scene management.
+ */
 public class Main extends Application {
 
     private static final int WIDTH = 1920;

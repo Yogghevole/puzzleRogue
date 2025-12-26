@@ -6,6 +6,10 @@ import javafx.scene.layout.*;
 import java.util.function.BiConsumer;
 import model.domain.SudokuGrid;
 
+/**
+ * Manages the construction and update of the Sudoku grid UI.
+ * Handles cell creation, styling, and displaying values/notes.
+ */
 public class SudokuUIManager {
 
     public void build(GridPane sudokuGridContainer,
@@ -92,6 +96,8 @@ public class SudokuUIManager {
                                 GridPane[][] noteGrids) {
         if (puzzle == null || cellLabels == null || noteGrids == null) return;
         int[][] initial = puzzle.getInitialGrid();
+        java.util.Set<String> bonusCells = puzzle.getBonusCells();
+
         for (int r = 0; r < gridSize; r++) {
             for (int c = 0; c < gridSize; c++) {
                 int v = initial[r][c];
@@ -103,6 +109,15 @@ public class SudokuUIManager {
                     if (!cellLabels[r][c].getStyleClass().contains("initial-number")) {
                         cellLabels[r][c].getStyleClass().add("initial-number");
                     }
+                    
+                    if (bonusCells != null && bonusCells.contains(r + "," + c)) {
+                        if (!cellLabels[r][c].getStyleClass().contains("buff-revealed-cell")) {
+                            cellLabels[r][c].getStyleClass().add("buff-revealed-cell");
+                        }
+                    } else {
+                        cellLabels[r][c].getStyleClass().remove("buff-revealed-cell");
+                    }
+
                     if (noteGrids[r][c] != null) noteGrids[r][c].setVisible(false);
                 } else {
                     cellLabels[r][c].setText("");
@@ -110,6 +125,7 @@ public class SudokuUIManager {
                     cellLabels[r][c].getStyleClass().remove("initial-number");
                     cellLabels[r][c].getStyleClass().remove("user-number-error");
                     cellLabels[r][c].getStyleClass().remove("user-number-correct");
+                    cellLabels[r][c].getStyleClass().remove("buff-revealed-cell");
                     if (noteGrids[r][c] != null) noteGrids[r][c].setVisible(false);
                 }
             }

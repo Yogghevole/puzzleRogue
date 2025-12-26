@@ -3,6 +3,9 @@ package model.domain;
 import java.util.Collections;
 import java.util.Map;
 
+/**
+ * Snapshot of active buffs for a specific run.
+ */
 public class RunFrozenBuffs {
     private final Map<String, Integer> frozenBuffLevels;
 

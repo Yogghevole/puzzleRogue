@@ -4,6 +4,9 @@ import javafx.scene.ImageCursor;
 import javafx.scene.image.Image;
 import javafx.scene.layout.StackPane;
 
+/**
+ * Manages the application of custom cursors within the game.
+ */
 public class CursorManager {
     public void apply(StackPane mainGameArea) {
         if (mainGameArea == null) return;

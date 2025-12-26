@@ -3,12 +3,13 @@ package model.service;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
+import java.util.Set;
+import java.util.HashSet;
 import model.domain.SudokuGrid;
 import model.domain.RunFrozenBuffs;
 
 /**
- * Responsabile della generazione di una griglia Sudoku completa e della rimozione
- * delle celle per raggiungere una difficoltà target (derivata dal livello).
+ * Generates valid Sudoku puzzles based on difficulty levels.
  */
 public class SudokuGenerator {
 
@@ -25,16 +26,44 @@ public class SudokuGenerator {
         
         String baseDifficulty = gameDataService.getBaseDifficultyByLevel(levelNumber);
 
-        int cellsToKeep = determineCellsToKeep(baseDifficulty, frozenBuffs);
+        int cellsToKeep = determineCellsToKeep(baseDifficulty);
 
         int[][] solvedGrid = generateSolvedGrid();
 
         int[][] initialGrid = removeCells(solvedGrid, cellsToKeep);
         
-        return new SudokuGrid(initialGrid, solvedGrid, baseDifficulty);
+        Set<String> bonusCells = new HashSet<>();
+        int buffLevel = frozenBuffs.getBuffLevel(STARTING_CELLS_BUFF_ID); 
+        
+        if (buffLevel > 0) {
+            double extraCells = gameDataService
+                .getBuffLevelData(STARTING_CELLS_BUFF_ID, buffLevel)
+                .getOrDefault("value", 0.0)
+                .doubleValue();
+            
+            if (extraCells == 0.0 && buffLevel > 0) {
+                extraCells = (double) buffLevel;
+            }
+            
+            int extra = (int) extraCells;
+            int revealedCount = 0;
+            int attempts = 0;
+            while (revealedCount < extra && attempts < 200) {
+                attempts++;
+                int r = random.nextInt(GRID_SIZE);
+                int c = random.nextInt(GRID_SIZE);
+                if (initialGrid[r][c] == 0) {
+                    initialGrid[r][c] = solvedGrid[r][c];
+                    bonusCells.add(r + "," + c);
+                    revealedCount++;
+                }
+            }
+        }
+        
+        return new SudokuGrid(initialGrid, solvedGrid, baseDifficulty, bonusCells);
     }
     
-    private int determineCellsToKeep(String baseDifficulty, RunFrozenBuffs frozenBuffs) {
+    private int determineCellsToKeep(String baseDifficulty) {
         int targetClues;
         
         switch (baseDifficulty) {
@@ -46,17 +75,6 @@ public class SudokuGenerator {
             default: targetClues = 38;
         }
         
-        int buffLevel = frozenBuffs.getBuffLevel(STARTING_CELLS_BUFF_ID); 
-        
-        if (buffLevel > 0) {
-            double extraCells = gameDataService
-                .getBuffLevelData(STARTING_CELLS_BUFF_ID, buffLevel)
-                .getOrDefault("value", 0.0)
-                .doubleValue();
-            
-            targetClues += (int) extraCells; 
-        }
-
         return targetClues;
     }
 

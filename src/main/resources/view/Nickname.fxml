@@ -1,17 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<!-- Initial screen for the user to input their nickname. -->
+
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.geometry.*?>
+<?import javafx.scene.text.Font?>
 
 <AnchorPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
             fx:id="rootPane" fx:controller="view.controller.NicknameController" prefWidth="800.0" prefHeight="600.0">
     <children>
-        <VBox alignment="CENTER" spacing="12.0" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
-            <Label text="Enter Nickname" />
-            <TextField fx:id="nickField" promptText="Nickname" prefWidth="300.0" />
-            <Button fx:id="continueButton" text="Continua" styleClass="menu-button" />
-        </VBox>
+        <StackPane AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+            <VBox alignment="CENTER" spacing="0">
+                <StackPane>
+                    <ImageView fitWidth="1200" preserveRatio="true">
+                        <image>
+                            <Image url="@../assets/menu/insert_name.png" />
+                        </image>
+                    </ImageView>
+                    
+                    <VBox alignment="CENTER" spacing="20">
+                        <padding>
+                            <Insets top="100" /> 
+                        </padding>
+                        <TextField fx:id="nickField" maxWidth="550" alignment="CENTER"
+                                   style="-fx-background-color: transparent; -fx-text-fill: white; -fx-prompt-text-fill: #aaaaaa; -fx-font-size: 42px; -fx-font-weight: bold;">
+                             <font>
+                                <Font name="System Bold" size="42.0" />
+                             </font>
+                        </TextField>
+                    </VBox>
+
+                    <Button fx:id="continueButton" style="-fx-background-color: transparent; -fx-padding: 0;" StackPane.alignment="BOTTOM_CENTER">
+                        <StackPane.margin>
+                             <Insets bottom="145" />
+                        </StackPane.margin>
+                        <graphic>
+                             <ImageView fitWidth="260" preserveRatio="true">
+                                <image>
+                                    <Image url="@../assets/menu/confirm.png" />
+                                </image>
+                             </ImageView>
+                        </graphic>
+                    </Button>
+                </StackPane>
+            </VBox>
+        </StackPane>
     </children>
-    
 </AnchorPane>

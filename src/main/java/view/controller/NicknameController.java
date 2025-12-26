@@ -3,16 +3,28 @@ package view.controller;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.stage.Stage;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.image.Image;
 import javafx.scene.layout.*;
+import javafx.application.Platform;
 import model.db.DatabaseManager;
 import model.dao.UserDAO;
 import model.service.SessionService;
 import view.util.StageUtils;
+import javafx.scene.image.ImageView;
+import javafx.scene.effect.Glow;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.effect.Blend;
+import javafx.scene.effect.BlendMode;
+import javafx.scene.paint.Color;
 
+/**
+ * Controller for the nickname entry screen.
+ * Handles user login and profile creation.
+ */
 public class NicknameController {
     @FXML private TextField nickField;
     @FXML private Button continueButton;
@@ -21,7 +33,38 @@ public class NicknameController {
     @FXML
     public void initialize() {
         continueButton.setOnAction(e -> handleContinue());
+        
+        nickField.setTextFormatter(new TextFormatter<>(change -> {
+            if (change.getControlNewText().length() > 15) {
+                return null;
+            }
+            return change;
+        }));
+        
         applyBackground();
+        setupButtonEffects();
+        rootPane.setFocusTraversable(true);
+        Platform.runLater(() -> rootPane.requestFocus());
+    }
+
+    private void setupButtonEffects() {
+        continueButton.setOnMouseEntered(e -> {
+            if (continueButton.getGraphic() instanceof ImageView) {
+                ImageView iv = (ImageView) continueButton.getGraphic();
+                Glow glow = new Glow(0.35);
+                DropShadow shadow = new DropShadow();
+                shadow.setRadius(6.0);
+                shadow.setSpread(0.1);
+                shadow.setColor(Color.web("#ffffff88"));
+                iv.setEffect(new Blend(BlendMode.SRC_OVER, glow, shadow));
+            }
+        });
+        continueButton.setOnMouseExited(e -> {
+            if (continueButton.getGraphic() instanceof ImageView) {
+                ImageView iv = (ImageView) continueButton.getGraphic();
+                iv.setEffect(null);
+            }
+        });
     }
 
     private void handleContinue() {
@@ -35,8 +78,9 @@ public class NicknameController {
         var user = userDAO.getUserByNick(nick);
         if (user == null) {
             userDAO.createUser(nick);
+            user = userDAO.getUserByNick(nick);
         }
-        SessionService.setCurrentNick(nick);
+        SessionService.setCurrentUser(user);
         navigateToHome();
     }
     private void applyBackground() {

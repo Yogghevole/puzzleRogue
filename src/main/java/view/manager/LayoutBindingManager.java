@@ -5,6 +5,10 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.StackPane;
 
+/**
+ * Manages the layout binding of the game interface.
+ * Handles resizing and responsiveness of UI components to the scene size.
+ */
 public class LayoutBindingManager {
 
     public void bindToSceneSize(Scene scene,

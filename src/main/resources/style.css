@@ -202,7 +202,6 @@
     font-family: 'Georgia';
     font-weight: bold; 
     font-size: 50px; 
-    /* Allinea il colore al nome dell'oggetto */
     -fx-text-fill: #E5D9B4; 
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 3, 0, 2, 2);
 }
@@ -225,7 +224,7 @@
     -fx-font-weight: normal;
     font-family: 'Georgia';
     font-size: 14pt; 
-    font-weight: 450;
+    font-weight: bold;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 2, 0, 1, 1);
 }
 .character-option:hover {
@@ -494,4 +493,43 @@
     background-color: rgba(106, 143, 61, 0.14);
     border-color: #5E7F34;
     border-width: 2px;
+}
+
+.buff-revealed-cell,
+.initial-number.buff-revealed-cell {
+    -fx-text-fill: #FFD700;
+    -fx-effect: dropshadow(gaussian, rgba(255, 215, 0, 0.8), 10, 0.5, 0, 0);
+    -fx-font-weight: bold;
+    -fx-font-size: 24px;
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.user-nick-label {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    font-size: 28px;
+    font-weight: bold;
+    -fx-effect: dropshadow(gaussian, black, 2, 1, 0, 0);
+}
+
+.user-points-label {
+    -fx-text-fill: #FFD700;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    font-size: 22px;
+    font-weight: bold;
+    -fx-effect: dropshadow(gaussian, black, 2, 1, 0, 0);
+}
+
+.heading-label {
+    -fx-font-family: 'Georgia';
+    -fx-font-size: 64px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #EEDDCC;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 4, 0.5, 0, 2);
+    font-family: 'Georgia';
+    font-size: 64px;
+    font-weight: 700;
 }

@@ -1,7 +1,9 @@
 package model.service;
 
+import model.dao.UserDAO;
 import model.dao.RunDAO;
 import model.db.DatabaseManager;
+import model.domain.BuffType;
 import model.domain.Run;
 import model.domain.RunFrozenBuffs;
 import model.domain.RunLevelState;
@@ -12,21 +14,21 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
 /**
- * Gestisce la logica di business di ogni singola Run.
+ * Core service managing the lifecycle of a game run.
+ * Orchestrates level transitions, state persistence, and game logic integration.
  */
 public class RunService {
 
     private final RunDAO runDAO;
+    private final UserDAO userDAO;
     private final GameDataService gameDataService;
     private final SudokuGenerator sudokuGenerator;
     private final DatabaseManager dbManager;
     private Run currentRun;
     private SudokuEngine currentEngine;
     private RunFrozenBuffs frozenBuffs; 
-    private int levelsCompletedCount = 0;
-    private int zeroErrorLevelCount = 0;
-    private int scoreItemPointsAccrued = 0;
     private PointService.ScoreBreakdown lastRunBreakdown;
 
     public RunService(RunDAO runDAO, GameDataService gameDataService, SudokuGenerator sudokuGenerator) {
@@ -34,29 +36,41 @@ public class RunService {
         this.gameDataService = gameDataService;
         this.sudokuGenerator = sudokuGenerator;
         this.dbManager = DatabaseManager.getInstance();
+        this.userDAO = new UserDAO(dbManager);
         this.frozenBuffs = new RunFrozenBuffs(Collections.emptyMap());
     }
     
     public RunService() {
         this.dbManager = DatabaseManager.getInstance();
         this.runDAO = new RunDAO(dbManager);
+        this.userDAO = new UserDAO(dbManager);
         this.gameDataService = new GameDataService();
         this.sudokuGenerator = new SudokuGenerator(gameDataService);
         this.frozenBuffs = new RunFrozenBuffs(Collections.emptyMap());
+    }
+
+    public int getMaxLives() {
+        if (currentRun == null) return 0;
+        String charId = currentRun.getCharacterId();
+        int base = gameDataService.getCharacterBaseLives(charId);
+        int extra = (int) getBuffValue(BuffType.EXTRA_LIVES.name(), 0);
+        return base + extra;
     }
 
     public boolean startNewRun(User user, String characterId) {
         this.frozenBuffs = freezeBuffs(user); 
         
         int baseLives = gameDataService.getCharacterBaseLives(characterId);
-        int extraLives = (int) getBuffValue("EXTRA_LIVES", 0);
+        int extraLives = (int) getBuffValue(BuffType.EXTRA_LIVES.name(), 0);
         
         this.currentRun = new Run(user.getNick(), baseLives + extraLives, characterId);
-        this.levelsCompletedCount = 0;
-        this.zeroErrorLevelCount = 0;
-        this.scoreItemPointsAccrued = 0;
         this.lastRunBreakdown = null;
         
+        runDAO.save(currentRun);
+        runDAO.saveFrozenBuffs(currentRun.getId(), frozenBuffs.getFrozenBuffs());
+        user.setCurrentRunId(currentRun.getId());
+        userDAO.updateUser(user);
+
         return startLevel(1);
     }
 
@@ -71,7 +85,7 @@ public class RunService {
         
         SudokuGrid newPuzzle = sudokuGenerator.generateNewPuzzle(levelNumber, frozenBuffs);
         
-        boolean hasProtection = getBuffLevel("FIRST_ERROR_PROTECT") > 0;
+        boolean hasProtection = getBuffLevel(BuffType.FIRST_ERROR_PROTECT.name()) > 0;
         
         RunLevelState newLevelState = new RunLevelState(
             levelNumber, 
@@ -110,7 +124,7 @@ public class RunService {
         RunLevelState state = currentRun.getCurrentLevelState();
         currentRun.incrementTotalErrors();
         
-        if (getBuffLevel("FIRST_ERROR_PROTECT") > 0 && !state.isProtectionUsed()) {
+        if (getBuffLevel(BuffType.FIRST_ERROR_PROTECT.name()) > 0 && !state.isProtectionUsed()) {
             state.setProtectionUsed(true);
             return;
         }
@@ -153,7 +167,7 @@ public class RunService {
                 int currentLevel = currentRun.getCurrentLevelState().getCurrentLevel();
                 int pts = currentLevel * 10;
                 currentRun.addToScore(pts);
-                scoreItemPointsAccrued += pts;
+                currentRun.addScoreItemPoints(pts);
                 success = true;
                 break;
         }
@@ -166,12 +180,15 @@ public class RunService {
         return success;
     }
 
-    public void registerErrorEvent(String reason) {
+    public void registerErrorEvent(String reason, boolean penalizeLife) {
         if (currentRun == null) return;
         RunLevelState state = currentRun.getCurrentLevelState();
         if (state == null) return;
         currentRun.incrementTotalErrors();
         state.incrementErrorsInLevel();
+        if (penalizeLife) {
+            currentRun.loseLife();
+        }
         saveCurrentRun();
     }
 
@@ -191,12 +208,15 @@ public class RunService {
                 currentRun.addLife();
                 break;
             case "SACRIFICE_ITEM":
+                if (currentRun.getLivesRemaining() > 1) {
+                    currentRun.loseLife();
+                }
                 break;
             case "SCORE_ITEM": {
                 int lvl = currentRun.getCurrentLevelState() != null ? currentRun.getCurrentLevelState().getCurrentLevel() : 1;
                 int pts = lvl * 10;
                 currentRun.addToScore(pts);
-                scoreItemPointsAccrued += pts;
+                currentRun.addScoreItemPoints(pts);
                 break;
             }
             default:
@@ -215,11 +235,15 @@ public class RunService {
             
             if (currentState.getErrorsInLevel() == 0) {
                 levelScore += 30;
-                zeroErrorLevelCount++;
+                currentRun.incrementZeroErrorLevels();
             }
             
+            if (getBuffLevel(BuffType.POINT_BONUS.name()) > 0) {
+                levelScore *= 2;
+            }
+
             currentRun.addToScore(levelScore);
-            levelsCompletedCount++;
+            currentRun.incrementLevelsCompleted();
 
             int nextLevel = currentLevel + 1;
             if (nextLevel <= 10) {
@@ -250,11 +274,14 @@ public class RunService {
         int levelScore = currentLevel * 10;
         if (currentState.getErrorsInLevel() == 0) {
             levelScore += 30;
-            zeroErrorLevelCount++;
+            currentRun.incrementZeroErrorLevels();
+        }
+        if (getBuffLevel(BuffType.POINT_BONUS.name()) > 0) {
+            levelScore *= 2;
         }
 
         currentRun.addToScore(levelScore);
-        levelsCompletedCount++;
+        currentRun.incrementLevelsCompleted();
 
         int nextLevel = currentLevel + 1;
         if (nextLevel <= 10) {
@@ -264,66 +291,107 @@ public class RunService {
         }
     }
 
-    public void endRun(boolean win) {
-        if (currentRun != null) {
-            int baseAccumulated = currentRun.getScore();
-            int remainingItems = 0;
-            int totalErrors = currentRun.getTotalErrors();
-            int pointBonusLevel = getBuffLevel("POINT_BONUS");
-            double pointBonusMultiplier = pointBonusLevel > 0 ? getBuffValue("POINT_BONUS", 1.0) : 1.0;
-            boolean noBuffsHardMode = pointBonusLevel <= 0 && frozenBuffs.isEmpty();
+    public void ensureEngineInitialized() {
+        if (currentEngine == null && currentRun != null && currentRun.getCurrentLevelState() != null) {
+            RunLevelState state = currentRun.getCurrentLevelState();
+            int[][] initial = RunLevelState.convertStringToGrid(state.getInitialGridData());
+            int[][] solved = RunLevelState.convertStringToGrid(state.getSolvedGridData());
+            
+            java.util.Set<String> bonusCells = java.util.Collections.emptySet();
+            if (state.getBonusCellsData() != null && !state.getBonusCellsData().isEmpty()) {
+                bonusCells = new java.util.HashSet<>(java.util.Arrays.asList(state.getBonusCellsData().split(";")));
+            }
+            
+            SudokuGrid grid = new SudokuGrid(initial, solved, state.getDifficultyTier(), bonusCells);
+            this.currentEngine = new SudokuEngine(grid);
+            
+            if (state.getUserGridData() != null) {
+                int[][] userGrid = RunLevelState.convertStringToGrid(state.getUserGridData());
+                this.currentEngine.setUserGrid(userGrid);
+            }
+        }
+    }
 
-            PointService pointService = new PointService();
-            PointService.ScoreBreakdown bd = pointService.buildBreakdown(
-                    levelsCompletedCount,
-                    zeroErrorLevelCount,
-                    totalErrors,
-                    remainingItems,
-                    win,
-                    scoreItemPointsAccrued,
-                    pointBonusLevel,
-                    pointBonusMultiplier,
-                    noBuffsHardMode
-            );
+    private void restoreNonConsumableBuffs(User user) {
+        if (frozenBuffs == null) return;
+        
+        String[] safeBuffs = {
+            BuffType.POINT_BONUS.name(),
+            BuffType.STARTING_CELLS.name(),
+            BuffType.INVENTORY_CAPACITY.name(),
+            BuffType.FIRST_ERROR_PROTECT.name(),
+            BuffType.EXTRA_LIVES.name()
+        };
+        
+        for (String buffId : safeBuffs) {
+            int frozenLevel = frozenBuffs.getBuffLevel(buffId);
+            int currentLevel = user.getBuffLevel(buffId);
+            
+            if (frozenLevel > 0 && currentLevel < frozenLevel) {
+                 System.err.println("WARNING: Restoring missing buff " + buffId + " (Level " + frozenLevel + ")");
+                 user.upgradeBuff(buffId, frozenLevel);
+            }
+        }
+    }
 
-            currentRun.setFinalScore(bd.getTotal());
-            lastRunBreakdown = bd;
-            saveCurrentRun();
+    private void finalizeRun(boolean win, int remainingItems) {
+        if (currentRun == null) {
+            System.err.println("DEBUG: currentRun is null in finalizeRun");
+            return;
+        }
+
+        int totalErrors = currentRun.getTotalErrors();
+        int pointBonusLevel = getBuffLevel(BuffType.POINT_BONUS.name());
+        double pointBonusMultiplier = 1.0;
+        if (pointBonusLevel > 0) {
+            pointBonusMultiplier = 1.0 + getFrozenBuffValue(BuffType.POINT_BONUS.name(), 0.0);
+        }
+        boolean noBuffsHardMode = pointBonusLevel <= 0 && frozenBuffs.isEmpty();
+
+        PointService pointService = new PointService();
+        PointService.ScoreBreakdown bd = pointService.buildBreakdown(
+                currentRun.getLevelsCompleted(),
+                currentRun.getZeroErrorLevels(),
+                totalErrors,
+                remainingItems,
+                win,
+                currentRun.getScoreItemPoints(),
+                pointBonusLevel,
+                pointBonusMultiplier,
+                noBuffsHardMode
+        );
+
+        currentRun.setFinalScore(bd.getTotal());
+        lastRunBreakdown = bd;
+        saveCurrentRun();
+
+        User user = getCurrentUser();
+        if (user != null) {
+
+            restoreNonConsumableBuffs(user);
+
+            user.setCurrentRunId(null);
+            user.addPoints(bd.getTotal());
+            user.setRunsCompleted(user.getRunsCompleted() + 1);
+            if (win) {
+                user.setRunsWon(user.getRunsWon() + 1);
+            }
+            userDAO.updateUser(user);
+            model.service.SessionService.setCurrentUser(user);
+        } else {
+            System.err.println("DEBUG: getCurrentUser returned null in finalizeRun");
         }
         
         currentRun = null;
         currentEngine = null;
     }
 
+    public void endRun(boolean win) {
+        finalizeRun(win, 0);
+    }
+
     public void endRunWithRemainingItems(boolean win, int remainingItemsOverride) {
-        if (currentRun != null) {
-            int baseAccumulated = currentRun.getScore();
-            int remainingItems = Math.max(0, remainingItemsOverride);
-            int totalErrors = currentRun.getTotalErrors();
-            int pointBonusLevel = getBuffLevel("POINT_BONUS");
-            double pointBonusMultiplier = pointBonusLevel > 0 ? getBuffValue("POINT_BONUS", 1.0) : 1.0;
-            boolean noBuffsHardMode = pointBonusLevel <= 0 && frozenBuffs.isEmpty();
-
-            PointService pointService = new PointService();
-            PointService.ScoreBreakdown bd = pointService.buildBreakdown(
-                    levelsCompletedCount,
-                    zeroErrorLevelCount,
-                    totalErrors,
-                    remainingItems,
-                    win,
-                    scoreItemPointsAccrued,
-                    pointBonusLevel,
-                    pointBonusMultiplier,
-                    noBuffsHardMode
-            );
-
-            currentRun.setFinalScore(bd.getTotal());
-            lastRunBreakdown = bd;
-            saveCurrentRun();
-        }
-
-        currentRun = null;
-        currentEngine = null;
+        finalizeRun(win, Math.max(0, remainingItemsOverride));
     }
 
     public PointService.ScoreBreakdown getLastRunBreakdown() { return lastRunBreakdown; }
@@ -341,6 +409,10 @@ public class RunService {
             Run run = new Run(currentUser.getNick(), 3, "DEFAULT");
             this.currentRun = run;
             runDAO.save(run);
+            
+            currentUser.setCurrentRunId(run.getId());
+            userDAO.updateUser(currentUser);
+            
             return true;
         } catch (Exception e) {
             System.err.println("Errore nella creazione di una nuova run: " + e.getMessage());
@@ -355,11 +427,34 @@ public class RunService {
             var opt = new model.dao.RunDAO(dbManager).findActiveRunByUser(currentUser.getNick());
             if (opt.isPresent()) {
                 this.currentRun = opt.get();
+                
+                Map<String, Integer> buffs = runDAO.getFrozenBuffs(currentRun.getId());
+                this.frozenBuffs = new RunFrozenBuffs(buffs);
+                
+                RunLevelState state = this.currentRun.getCurrentLevelState();
+                if (state != null && state.getInitialGridData() != null && state.getSolvedGridData() != null) {
+                    int[][] initial = RunLevelState.convertStringToGrid(state.getInitialGridData());
+                    int[][] solved = RunLevelState.convertStringToGrid(state.getSolvedGridData());
+                    
+                    java.util.Set<String> bonusCells = java.util.Collections.emptySet();
+                    if (state.getBonusCellsData() != null && !state.getBonusCellsData().isEmpty()) {
+                        bonusCells = new java.util.HashSet<>(java.util.Arrays.asList(state.getBonusCellsData().split(";")));
+                    }
+                    
+                    SudokuGrid grid = new SudokuGrid(initial, solved, state.getDifficultyTier(), bonusCells);
+                    this.currentEngine = new SudokuEngine(grid);
+                    
+                    if (state.getUserGridData() != null) {
+                        int[][] userGrid = RunLevelState.convertStringToGrid(state.getUserGridData());
+                        this.currentEngine.setUserGrid(userGrid);
+                    }
+                }
                 return true;
             }
             return false;
         } catch (Exception e) {
             System.err.println("Errore nel resume della run: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -399,12 +494,33 @@ public class RunService {
         return frozenBuffs.getBuffLevel(buffId);
     }
 
+    public int getFrozenBuffLevel(String buffId) {
+        return frozenBuffs.getBuffLevel(buffId);
+    }
+
     private double getBuffValue(String buffId, double defaultValue) {
         int level = getBuffLevel(buffId);
         if (level > 0) {
             return gameDataService.getBuffLevelData(buffId, level).getOrDefault("value", defaultValue).doubleValue();
         }
         return defaultValue;
+    }
+
+    public double getFrozenBuffValue(String buffId, double defaultValue) {
+        int level = frozenBuffs.getBuffLevel(buffId);
+        if (level > 0) {
+            return gameDataService.getBuffLevelData(buffId, level).getOrDefault("value", defaultValue).doubleValue();
+        }
+        return defaultValue;
+    }
+
+    public void consumeFirstErrorProtection() {
+        if (currentRun == null || currentRun.getCurrentLevelState() == null) return;
+        RunLevelState st = currentRun.getCurrentLevelState();
+        if (!st.isProtectionUsed()) {
+            st.setProtectionUsed(true);
+            saveCurrentRun();
+        }
     }
     
     private boolean removeItemFromInventory(String itemId) {
@@ -430,6 +546,11 @@ public class RunService {
 
     private void saveCurrentRun() {
         if (currentRun != null) {
+            if (currentEngine != null && currentRun.getCurrentLevelState() != null) {
+                int[][] userGrid = currentEngine.getUserGrid();
+                String gridData = RunLevelState.convertGridToString(userGrid);
+                currentRun.getCurrentLevelState().setUserGridData(gridData);
+            }
             runDAO.save(currentRun);
         }
     }

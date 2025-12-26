@@ -4,10 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Centralized point calculation and breakdown generation for endgame summary.
+ * Service responsible for calculating scores and generating detailed breakdowns.
  */
 public class PointService {
 
+    /**
+     * Represents a single line item in the score breakdown.
+     */
     public static class Entry {
         public final String title;
         public final int points;
@@ -58,7 +61,7 @@ public class PointService {
 
         bd.add("Zero Error Levels (x" + zeroErrorLevelCount + ")", zeroErrorLevelCount * 30);
 
-        bd.add("Total Errors (x" + totalErrors + ")", totalErrors * 5);
+        bd.add("Total Errors (x" + totalErrors + ")", totalErrors * -5);
 
         bd.add("Inventory Items Remaining (x" + remainingItems + ")", remainingItems * 20);
 
@@ -71,7 +74,8 @@ public class PointService {
         }
 
         if (pointBonusLevel > 0 && pointBonusMultiplier > 1.0) {
-            bd.applyMultiplier("Score Multiplier (POINT_BONUS Lv" + pointBonusLevel + ")", pointBonusMultiplier);
+            int pct = (int) Math.round((pointBonusMultiplier - 1.0) * 100);
+            bd.applyMultiplier("Score Multiplier (+" + pct + "%)", pointBonusMultiplier);
         } else {
             bd.finalizeTotal();
         }

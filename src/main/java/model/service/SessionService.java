@@ -1,7 +1,11 @@
 package model.service;
 
+/**
+ * Manages the current user session and transient global state.
+ */
 public class SessionService {
     private static String currentNick;
+    private static model.domain.User currentUser;
     private static String lastSelectedBuffId;
 
     public static void setCurrentNick(String nick) {
@@ -12,8 +16,22 @@ public class SessionService {
         return currentNick;
     }
 
+    public static void setCurrentUser(model.domain.User user) {
+        currentUser = user;
+        if (user != null) {
+            currentNick = user.getNick();
+        } else {
+            currentNick = null;
+        }
+    }
+
+    public static model.domain.User getCurrentUser() {
+        return currentUser;
+    }
+
     public static void clear() {
         currentNick = null;
+        currentUser = null;
         lastSelectedBuffId = null;
         setLastSelectedCharacter(null);
     }

@@ -24,7 +24,8 @@ import java.util.function.BiConsumer;
 import java.util.function.IntConsumer;
 
 /**
- * Gestisce l'uso degli oggetti di inventario delegato dal GameController.
+ * Manages the usage of consumable items within the game.
+ * Handles the logic and effects of different inventory items.
  */
 public class ItemUseManager {
     private final Supplier<SudokuEngine> sudokuSupplier;
@@ -284,6 +285,24 @@ public class ItemUseManager {
         } else {
             inventorySlotsUIManager.flashFailureOnSlot(slotIndex);
             SoundManager.getInstance().playInvalidClick();
+        }
+    }
+
+    private void handleDeleteHintsItem(int slotIndex) {
+        if (inventorySlotsUIManager == null || noteGrids == null) {
+            return;
+        }
+        for (int r = 0; r < noteGrids.length; r++) {
+            for (int c = 0; c < noteGrids[r].length; c++) {
+                GridPane ng = noteGrids[r][c];
+                if (ng != null) ng.setVisible(false);
+            }
+        }
+        inventorySlotsUIManager.clearSlot(slotIndex);
+        inventorySlotsUIManager.flashSuccessOnSlot(slotIndex);
+        try { SoundManager.getInstance().playSettingsToggle(); } catch (Exception ignore) {}
+        if (sudokuToastShower != null) {
+            sudokuToastShower.accept("Hints cleared", Color.CORNFLOWERBLUE);
         }
     }
 

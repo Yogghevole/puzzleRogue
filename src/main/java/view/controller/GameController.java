@@ -8,6 +8,9 @@ import javafx.scene.*;
 import javafx.scene.input.*;
 import view.manager.*;
 import javafx.animation.PauseTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.SequentialTransition;
+import javafx.animation.TranslateTransition;
 import javafx.util.Duration;
 import javafx.stage.*;
 import javafx.geometry.*;
@@ -18,6 +21,10 @@ import java.util.*;
 import view.util.*;
  
 
+/**
+ * Main controller for the gameplay view.
+ * Orchestrates the game loop, UI updates, and user interactions during a run.
+ */
 public class GameController {
     
     @FXML private StackPane mainGameArea; 
@@ -52,7 +59,6 @@ public class GameController {
     private int currentLevel = 1;
     private int totalLevels = 10;
     private final GameDataService gameDataService = new GameDataService(DatabaseManager.getInstance());
-    private final Set<String> usedEnemyGlobal = new HashSet<>();
     private final Random rng = new Random();
     private boolean characterSelected = false;
     private final SudokuGenerator sudokuGenerator = new SudokuGenerator(gameDataService);
@@ -73,8 +79,6 @@ public class GameController {
     private boolean firstErrorProtectionActive = false;
     private boolean firstErrorProtectionUsed = false;
     private boolean noteModeActive = false;
-    @SuppressWarnings("unused")
-    private String currentTheme = null;
     private int initialMaxLives = 0;
     private boolean characterSelectInProgress = false;
 
@@ -193,40 +197,8 @@ public class GameController {
         }
 
         backgroundManager.resetRun();
-        if (runService != null && runService.getCurrentRun() != null) {
-            hideGameUIForSelection(false);
-            characterSelected = true;
-            RunLevelState st = runService.getCurrentRun().getCurrentLevelState();
-            if (st == null) {
-                runService.startLevel(1);
-                st = runService.getCurrentRun().getCurrentLevelState();
-            }
-            currentLevel = st.getCurrentLevel();
-            applyBackgroundForCurrentLevel();
-            try {
-                int[][] initial = RunLevelState.convertStringToGrid(st.getInitialGridData());
-                int[][] user = RunLevelState.convertStringToGrid(st.getUserGridData());
-                SudokuGrid grid = new SudokuGrid(initial, user, st.getDifficultyTier());
-                sudokuEngine = new model.engine.SudokuEngine(grid);
-                applyPuzzleToUI(grid);
-                updateLevelAndDifficultyUI();
-                spawnEnemyForCurrentLevel();
-                hudManager.renderSelectedBuffs(selectedBuffsHBox);
-                hudManager.renderBuffInfo(buffInfoBox, gameDataService);
-            } catch (Exception e) {
-                System.err.println("Errore nel ripristino griglia utente: " + e.getMessage());
-            }
-        } else {
-            hideGameUIForSelection(true);
-            applyBackgroundForCurrentLevel();
-            showCharacterSelectionModal();
-        }
 
         javafx.application.Platform.runLater(this::applyCustomCursor);
-
-        if (this.runService != null) {
-            this.runService.getCurrentRun();
-        }
 
         livesUIManager = new LivesUIManager(livesHBox, "/assets/icons/utils/heart.png");
         livesUIManager.setLives(0);
@@ -239,24 +211,95 @@ public class GameController {
         if (itemSelectionButton != null) {
             itemSelectionButton.setVisible(false);
         }
+    }
 
-        if (mainGameArea != null) {
-            mainGameArea.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
-                Object tgt = e.getTarget();
-                if (tgt instanceof Node) {
-                    Node n = (Node) tgt;
-                    boolean insideGrid = view.util.NodeUtils.isDescendantOf(n, sudokuGridContainer);
-                    boolean insideControls = view.util.NodeUtils.isDescendantOf(n, inputControlHBox) || view.util.NodeUtils.isDescendantOf(n, inventorySlotsHBox);
-                    if (!insideGrid && !insideControls) {
-                        clearSelectedCell();
-                        sudokuHighlightManager.clearNumberHighlights();
+    public void startGame() {
+        if (runService != null && runService.getCurrentRun() != null) {
+            hideGameUIForSelection(false);
+            characterSelected = true;
+            RunLevelState st = runService.getCurrentRun().getCurrentLevelState();
+            if (st == null) {
+                runService.startLevel(1);
+                st = runService.getCurrentRun().getCurrentLevelState();
+            }
+            currentLevel = st.getCurrentLevel();
+            applyBackgroundForCurrentLevel();
+            try {
+                    SudokuGrid grid;
+                    java.util.Set<String> bonusCells = java.util.Collections.emptySet();
+                    if (st.getBonusCellsData() != null && !st.getBonusCellsData().isEmpty()) {
+                        bonusCells = new java.util.HashSet<>(java.util.Arrays.asList(st.getBonusCellsData().split(";")));
                     }
-                } else {
-                    clearSelectedCell();
-                    sudokuHighlightManager.clearNumberHighlights();
+
+                    if (runService.getCurrentEngine() != null) {
+                        sudokuEngine = runService.getCurrentEngine();
+                        grid = sudokuEngine.getSudokuGrid();
+                        applyPuzzleToUI(grid);
+                    } else {
+                        int[][] initial = RunLevelState.convertStringToGrid(st.getInitialGridData());
+                        int[][] solved = RunLevelState.convertStringToGrid(st.getSolvedGridData());
+                        grid = new SudokuGrid(initial, solved, st.getDifficultyTier(), bonusCells);
+                        sudokuEngine = new model.engine.SudokuEngine(grid);
+                        if (st.getUserGridData() != null) {
+                            int[][] user = RunLevelState.convertStringToGrid(st.getUserGridData());
+                            sudokuEngine.setUserGrid(user);
+                        }
+                        applyPuzzleToUI(grid);
+                    }
+                
+                refreshUIFromEngine();
+                
+                updateLevelAndDifficultyUI();
+                spawnEnemyForCurrentLevel();
+                hudManager.renderSelectedBuffs(selectedBuffsHBox);
+                hudManager.renderBuffInfo(buffInfoBox, gameDataService);
+
+                int livesNow = runService.getCurrentRun().getLivesRemaining();
+                if (livesUIManager != null) {
+                    livesUIManager.setLives(livesNow);
+                    
+                    try {
+                        initialMaxLives = runService.getMaxLives();
+                    } catch (Exception e) {
+                        System.err.println("Error calculating max lives: " + e.getMessage());
+                        initialMaxLives = Math.max(livesNow, 3);
+                    }
                 }
-            });
+                
+                int invCapLvl = runService.getFrozenBuffLevel(model.domain.BuffType.INVENTORY_CAPACITY.name());
+                if (inventorySlotsUIManager != null) {
+                    inventorySlotsUIManager.setCapacityLevel(invCapLvl);
+                    inventorySlotsUIManager.clear();
+                    java.util.Map<String, Integer> inv = runService.getCurrentRun().getInventory();
+                    for (java.util.Map.Entry<String, Integer> e : inv.entrySet()) {
+                        String path = mapItemIcon(e.getKey());
+                        int qty = Math.max(1, e.getValue());
+                        for (int i = 0; i < qty; i++) {
+                            if (path != null) inventorySlotsUIManager.addItemImage(path);
+                        }
+                    }
+                }
+                firstErrorProtectionActive = runService.getFrozenBuffLevel("FIRST_ERROR_PROTECT") > 0;
+
+                if (runService.getCurrentRun().getCurrentLevelState() != null) {
+                    firstErrorProtectionUsed = runService.getCurrentRun().getCurrentLevelState().isProtectionUsed();
+                } else {
+                    firstErrorProtectionUsed = false;
+                }
+                applyBlueAuraToCharacter(firstErrorProtectionActive && !firstErrorProtectionUsed);
+                
+                applyThemeForCharacter(runService.getCurrentRun().getCharacterId());
+
+            } catch (Exception e) {
+                System.err.println("Errore nel ripristino griglia utente: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            hideGameUIForSelection(true);
+            applyBackgroundForCurrentLevel();
+            showCharacterSelectionModal();
         }
+
     }
 
     
@@ -351,7 +394,7 @@ public class GameController {
             }
         } catch (Exception ignore) {}
         try { view.manager.SoundManager.getInstance().fadeOutMusic(400); } catch (Exception ignore) {}
-        try { view.manager.SoundManager.getInstance().playWinItemSelection(); } catch (Exception ignore) {}
+        try { view.manager.SoundManager.getInstance().playWinSelectItem(); } catch (Exception ignore) {}
         itemSelectionManager.show(modalContainer, this::onItemSelectedFromOption);
     }
 
@@ -403,18 +446,53 @@ public class GameController {
             updateLevelAndDifficultyUI();
             hudManager.updateSkipButtonState(skipButton, gameDataService.isBossLevel(currentLevel), characterSelected);
 
-            generateSudokuForCurrentLevel();
-            spawnEnemyForCurrentLevel();
+            if (runService != null) {
+                runService.startNewRunWithCharacter(opt.id);
+                runService.ensureEngineInitialized();
 
-            
+                RunLevelState st = runService.getCurrentRun().getCurrentLevelState();
+                
+                String bg = backgroundManager.getLastSelectedPath();
+                if (bg != null && (st.getBackgroundId() == null || st.getBackgroundId().isEmpty())) {
+                    st.setBackgroundId(bg);
+                    runService.save();
+                }
 
-            int baseLives = gameDataService.getCharacterBaseLives(opt.id);
-            if (baseLives < 0) baseLives = 0;
-            if (livesUIManager == null) {
-                livesUIManager = new LivesUIManager(livesHBox, "/assets/icons/utils/heart.png");
+                currentLevel = st.getCurrentLevel();
+                
+                sudokuEngine = runService.getCurrentEngine();
+                if (sudokuEngine != null) {
+                    applyPuzzleToUI(sudokuEngine.getSudokuGrid());
+                }
+
+                spawnEnemyForCurrentLevel();
+                int livesNow = runService.getCurrentRun().getLivesRemaining();
+                if (livesUIManager == null) {
+                    livesUIManager = new LivesUIManager(livesHBox, "/assets/icons/utils/heart.png");
+                }
+                livesUIManager.setLives(livesNow);
+                initialMaxLives = livesNow;
+                int invCapLvl = runService.getFrozenBuffLevel("INVENTORY_CAPACITY");
+                if (inventorySlotsUIManager == null) {
+                    inventorySlotsUIManager = new InventorySlotsUIManager(inventorySlotsHBox,
+                            "/assets/icons/items/placeholder.png");
+                }
+                inventorySlotsUIManager.setCapacityLevel(invCapLvl);
+                java.util.Map<String, Integer> inv = runService.getCurrentRun().getInventory();
+                for (java.util.Map.Entry<String, Integer> e : inv.entrySet()) {
+                    String path = mapItemIcon(e.getKey());
+                    int qty = Math.max(1, e.getValue());
+                    for (int i = 0; i < qty; i++) {
+                        if (path != null) inventorySlotsUIManager.addItemImage(path);
+                    }
+                }
+                firstErrorProtectionActive = runService.getFrozenBuffLevel("FIRST_ERROR_PROTECT") > 0;
+                firstErrorProtectionUsed = false;
+                applyBlueAuraToCharacter(firstErrorProtectionActive);
+            } else {
+                generateSudokuForCurrentLevel();
+                spawnEnemyForCurrentLevel();
             }
-            livesUIManager.setLives(baseLives);
-            initialMaxLives = baseLives;
         } catch (Exception e) {
         System.err.println("Error setting selected character: " + e.getMessage());
         } finally {
@@ -424,7 +502,26 @@ public class GameController {
 
     private void applyThemeForCharacter(String characterId) {
         String added = hudManager.applyThemeForCharacter(mainGameArea, characterId);
-        currentTheme = added;
+        
+        if (characterId != null) {
+            String spritePath = null;
+            switch (characterId.toUpperCase()) {
+                case "CRUSADER": spritePath = "/assets/characters/crusader.png"; break;
+                case "HIGHWAYMAN": spritePath = "/assets/characters/highwayman.png"; break;
+                case "JESTER": spritePath = "/assets/characters/jester.png"; break;
+                case "OCCULTIST": spritePath = "/assets/characters/occultist.png"; break;
+                case "PLAGUEDOCTOR": spritePath = "/assets/characters/plague_doctor.png"; break;
+            }
+            
+            if (spritePath != null) {
+                try {
+                    Image img = new Image(getClass().getResourceAsStream(spritePath));
+                    playerSpriteManager.applyTo(characterSpriteView, img, characterId);
+                } catch (Exception e) {
+                    System.err.println("Error loading character sprite for resume: " + e.getMessage());
+                }
+            }
+        }
     }
 
     
@@ -442,7 +539,30 @@ public class GameController {
     }
 
     private void spawnEnemyForCurrentLevel() {
-        enemySpriteManager.spawnForLevel(enemySpriteView, difficultyLabel, gameDataService, currentLevel, usedEnemyGlobal, rng);
+        if (runService != null && runService.getCurrentRun() != null && runService.getCurrentRun().getCurrentLevelState() != null) {
+            RunLevelState state = runService.getCurrentRun().getCurrentLevelState();
+            String existingEnemy = state.getEnemySpriteId();
+            if (existingEnemy != null && !existingEnemy.isEmpty() && !"DEFAULT_ENEMY".equals(existingEnemy)) {
+                Image img = new Image(getClass().getResourceAsStream(existingEnemy));
+                enemySpriteManager.applyTo(enemySpriteView, img, existingEnemy);
+                return;
+            }
+        }
+
+        Set<String> usedEnemies = new HashSet<>();
+        if (runService != null && runService.getCurrentRun() != null) {
+            usedEnemies = runService.getCurrentRun().getUsedEnemies();
+        }
+
+        String picked = enemySpriteManager.spawnForLevel(enemySpriteView, difficultyLabel, gameDataService, currentLevel, usedEnemies, rng);
+        
+        if (picked != null && runService != null && runService.getCurrentRun() != null) {
+            runService.getCurrentRun().addUsedEnemy(picked);
+            if (runService.getCurrentRun().getCurrentLevelState() != null) {
+                runService.getCurrentRun().getCurrentLevelState().setEnemySpriteId(picked);
+            }
+            runService.save();
+        }
     }
 
     private void completeLevelAndAdvance() {
@@ -477,9 +597,27 @@ public class GameController {
                 applyBackgroundForCurrentLevel();
                 sudokuEngine = runService.getCurrentEngine();
                 int[][] init = model.domain.RunLevelState.convertStringToGrid(runService.getCurrentRun().getCurrentLevelState().getInitialGridData());
-                sudokuUIManager.applyInitialGridToUI(init, GRID_SIZE, cellLabels, noteGrids);
+                int[][] solved = model.domain.RunLevelState.convertStringToGrid(runService.getCurrentRun().getCurrentLevelState().getSolvedGridData());
+                
+                java.util.Set<String> bonusCells = java.util.Collections.emptySet();
+                String bonusData = runService.getCurrentRun().getCurrentLevelState().getBonusCellsData();
+                if (bonusData != null && !bonusData.isEmpty()) {
+                    bonusCells = new java.util.HashSet<>(java.util.Arrays.asList(bonusData.split(";")));
+                }
+                
+                SudokuGrid puzzle = new SudokuGrid(init, solved, runService.getCurrentRun().getCurrentLevelState().getDifficultyTier(), bonusCells);
+                applyPuzzleToUI(puzzle);
                 spawnEnemyForCurrentLevel();
                 hudManager.updateSkipButtonState(skipButton, gameDataService.isBossLevel(currentLevel), characterSelected);
+
+                firstErrorProtectionActive = runService.getFrozenBuffLevel("FIRST_ERROR_PROTECT") > 0;
+                if (runService.getCurrentRun().getCurrentLevelState() != null) {
+                    firstErrorProtectionUsed = runService.getCurrentRun().getCurrentLevelState().isProtectionUsed();
+                } else {
+                    firstErrorProtectionUsed = false;
+                }
+                applyBlueAuraToCharacter(firstErrorProtectionActive && !firstErrorProtectionUsed);
+
             } else {
                 try { view.manager.SoundManager.getInstance().fadeOutMusic(400); } catch (Exception ignore) {}
                 hudManager.updateSkipButtonState(skipButton, gameDataService.isBossLevel(currentLevel), characterSelected);
@@ -508,7 +646,34 @@ public class GameController {
     private void applyBackgroundForCurrentLevel() {
         try {
             boolean isBoss = gameDataService.isBossLevel(currentLevel);
+            
+            if (runService != null && runService.getCurrentRun() != null && runService.getCurrentRun().getCurrentLevelState() != null) {
+                RunLevelState state = runService.getCurrentRun().getCurrentLevelState();
+                String existingBg = state.getBackgroundId();
+                if (existingBg != null && !existingBg.isEmpty()) {
+                    boolean applied = backgroundManager.applyBackground(backgroundImageView, existingBg);
+                    if (applied) {
+                        try {
+                            String cat = backgroundManager.getLastSelectedCategory();
+                            if (characterSelected) {
+                                view.manager.SoundManager.getInstance().playLevelMusicForCategory(cat);
+                            }
+                        } catch (Exception ignore) {}
+                        return;
+                    }
+                }
+            }
+
             backgroundManager.applyRandomForLevel(backgroundImageView, isBoss);
+            
+            if (runService != null && runService.getCurrentRun() != null && runService.getCurrentRun().getCurrentLevelState() != null) {
+                String picked = backgroundManager.getLastSelectedPath();
+                if (picked != null) {
+                    runService.getCurrentRun().getCurrentLevelState().setBackgroundId(picked);
+                    runService.save();
+                }
+            }
+
             try {
                 String cat = backgroundManager.getLastSelectedCategory();
                 if (characterSelected) {
@@ -650,13 +815,17 @@ public class GameController {
     private void handleUserError() {
         if (firstErrorProtectionActive && !firstErrorProtectionUsed) {
             firstErrorProtectionUsed = true;
-            try { if (runService != null) runService.registerErrorEvent("protezione primo errore attiva"); } catch (Exception ignore) {}
-        return;
+            try { if (runService != null) runService.consumeFirstErrorProtection(); } catch (Exception ignore) {}
+            animateProtectionLoss(() -> applyBlueAuraToCharacter(false));
+            return;
         }
         if (livesUIManager != null && livesUIManager.getLives() > 0) {
-            if (livesUIManager.getLives() > 1) {
-                try { if (runService != null) runService.registerErrorEvent("errore dell'utente"); } catch (Exception ignore) {}
-            }
+            try { 
+                if (runService != null) {
+                    runService.registerErrorEvent("errore dell'utente", true); 
+                }
+            } catch (Exception ignore) {}
+            
             livesUIManager.loseLifeWithAnimation();
             if (livesUIManager.getLives() <= 0) {
                 try { view.manager.SoundManager.getInstance().stopMusic(); } catch (Exception ignore) {}
@@ -681,7 +850,86 @@ public class GameController {
         }
     }
 
+    private void animateProtectionLoss(Runnable onFinished) {
+        if (characterSpriteView == null) {
+            if (onFinished != null) onFinished.run();
+            return;
+        }
 
+        javafx.scene.effect.DropShadow intenseGlow = new javafx.scene.effect.DropShadow();
+        intenseGlow.setRadius(40);
+        intenseGlow.setSpread(0.6);
+        intenseGlow.setColor(javafx.scene.paint.Color.CYAN.brighter());
+        characterSpriteView.setEffect(intenseGlow);
+
+        TranslateTransition shake = new TranslateTransition(Duration.millis(50), characterSpriteView);
+        shake.setFromX(0);
+        shake.setToX(10);
+        shake.setCycleCount(6);
+        shake.setAutoReverse(true);
+
+        ScaleTransition pop = new ScaleTransition(Duration.millis(300), characterSpriteView);
+        pop.setFromX(1.0);
+        pop.setFromY(1.0);
+        pop.setToX(1.1);
+        pop.setToY(1.1);
+        pop.setAutoReverse(true);
+        pop.setCycleCount(2);
+
+        SequentialTransition seq = new SequentialTransition(shake, pop);
+        seq.setOnFinished(e -> {
+
+             if (onFinished != null) onFinished.run();
+
+        });
+        seq.play();
+    }
+
+    private void applyBlueAuraToCharacter(boolean active) {
+        if (characterSpriteView == null) return;
+        if (!active) {
+            characterSpriteView.setEffect(null);
+            return;
+        }
+        javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+        glow.setRadius(22);
+        glow.setSpread(0.25);
+        glow.setColor(javafx.scene.paint.Color.rgb(80, 160, 255, 0.85));
+        characterSpriteView.setEffect(glow);
+    }
+
+    private String mapItemIcon(String itemId) {
+        if (itemId == null) return null;
+        switch (itemId) {
+            case "HINT_ITEM": return "/assets/icons/items/hint_item.png";
+            case "LIFE_BOOST_ITEM": return "/assets/icons/items/missing_heart_item.png";
+            case "SCORE_ITEM": return "/assets/icons/items/score_item.png";
+            case "SACRIFICE_ITEM": return "/assets/icons/items/sacrifice_item.png";
+            default: return null;
+        }
+    }
+
+
+
+    private void refreshUIFromEngine() {
+        if (sudokuEngine == null) return;
+        int[][] userGrid = sudokuEngine.getUserGrid();
+        for (int r = 0; r < GRID_SIZE; r++) {
+            for (int c = 0; c < GRID_SIZE; c++) {
+                if (!sudokuEngine.isInitialCell(r, c)) {
+                    int val = userGrid[r][c];
+                    if (val != 0) {
+                        if (sudokuEngine.isCorrect(r, c, val)) {
+                            sudokuUIManager.applyUserCorrect(r, c, val, cellLabels, noteGrids);
+                        } else {
+                            sudokuUIManager.applyUserError(r, c, val, cellLabels, noteGrids);
+                        }
+                    }
+                }
+            }
+        }
+        gameInputManager.refreshNumberButtonsAvailability(cellLabels);
+    }
 
     private void clearSelectedCell() {
         if (selectedCellVBox != null) {

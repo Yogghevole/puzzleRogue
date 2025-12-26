@@ -2,6 +2,10 @@ package view.util;
 
 import javafx.scene.layout.StackPane;
 
+/**
+ * Utility class for managing modal overlays in the UI.
+ * Handles showing and hiding modal dialogs with different styles (default, endgame).
+ */
 public final class ModalUtils {
     private ModalUtils() {}
 

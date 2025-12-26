@@ -1,6 +1,7 @@
 package model.service;
 
 import model.db.DatabaseManager;
+import model.domain.BuffType;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,6 +18,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * Service for retrieving static game configuration data from the database.
+ * Handles queries for buff costs, level difficulties, and other read-only data.
+ */
 public class GameDataService {
 
     private final DatabaseManager dbManager;
@@ -25,6 +30,9 @@ public class GameDataService {
         this.dbManager = dbManager;
     }
 
+    /**
+     * Retrieves cost and effect value for a specific buff at a given level.
+     */
     public Map<String, Number> getBuffLevelData(String buffId, int level) {
         String sql = "SELECT cost_points, effect_value FROM Buff_Level_Cost WHERE buff_id = ? AND level = ?";
         Map<String, Number> data = new HashMap<>();
@@ -44,6 +52,12 @@ public class GameDataService {
         } catch (SQLException e) {
             System.err.println("SQL error retrieving Buff data for " + buffId + " at level " + level + ": " + e.getMessage());
         }
+        
+        if (data.isEmpty() && BuffType.STARTING_CELLS.name().equals(buffId) && level > 0) {
+            data.put("value", (double) level);
+            data.put("cost", 1000 * level);
+        }
+        
         return data;
     }
 
@@ -74,22 +88,7 @@ public class GameDataService {
     }
 
     public List<String> listEnemySpritePaths(String difficultyTier) {
-        if (difficultyTier == null) return Collections.emptyList();
-        String dirName = difficultyTier.toLowerCase();
-        try {
-            URL url = getClass().getResource("/assets/enemies/" + dirName);
-            if (url == null) return Collections.emptyList();
-            Path dir = Path.of(url.toURI());
-            try (Stream<Path> stream = Files.list(dir)) {
-                return stream
-                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".png"))
-                        .map(p -> "/assets/enemies/" + dirName + "/" + p.getFileName().toString())
-                        .collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            System.err.println("Unable to list enemy files for '" + difficultyTier + "': " + e.getMessage());
-            return Collections.emptyList();
-        }
+        return AssetManifest.getEnemyPaths(difficultyTier);
     }
 
     public String pickEnemySpritePath(String difficultyTier, Set<String> usedEnemyPaths, Random rng) {
@@ -167,12 +166,20 @@ public class GameDataService {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getInt("max_level");
+                    int max = rs.getInt("max_level");
+                    if (max > 0) return max;
                 }
             }
         } catch (SQLException e) {
             System.err.println("SQL error retrieving max buff level for " + buffId + ": " + e.getMessage());
         }
+        
+        if (BuffType.STARTING_CELLS.name().equals(buffId)) return 3;
+        if (BuffType.EXTRA_LIVES.name().equals(buffId)) return 3;
+        if (BuffType.POINT_BONUS.name().equals(buffId)) return 3;
+        if (BuffType.INVENTORY_CAPACITY.name().equals(buffId)) return 3;
+        if (BuffType.FIRST_ERROR_PROTECT.name().equals(buffId)) return 1;
+        
         return 0;
     }
     

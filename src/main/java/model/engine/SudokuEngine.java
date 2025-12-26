@@ -9,13 +9,15 @@ import java.util.Set;
 import java.util.stream.IntStream;
 
 /**
- * Implementazione concreta della logica del Sudoku.
+ * Implementation of the puzzle engine for Sudoku.
+ * Manages grid state, user moves, and validation.
  */
 public class SudokuEngine implements PuzzleEngine {
 
     private final int[][] initialGrid;
     private final int[][] solvedGrid;
     private int[][] userGrid;
+    private final SudokuGrid sudokuGrid;
 
     @SuppressWarnings("unchecked")
     private final Set<Integer>[][] notes = new Set[SIZE][SIZE];
@@ -24,6 +26,7 @@ public class SudokuEngine implements PuzzleEngine {
     private static final int SIZE = 9;
 
     public SudokuEngine(SudokuGrid puzzle) {
+        this.sudokuGrid = puzzle;
         this.initialGrid = puzzle.getInitialGrid();
         this.solvedGrid = puzzle.getSolvedGrid();
         this.userGrid = Arrays.stream(initialGrid).map(int[]::clone).toArray(int[][]::new);
@@ -34,9 +37,13 @@ public class SudokuEngine implements PuzzleEngine {
             }
         }
         
-        IntStream.range(0, SIZE).forEach(r ->
-            IntStream.range(0, SIZE).filter(c -> initialGrid[r][c] != 0).forEach(c -> notes[r][c].clear())
-        );
+        for (int r = 0; r < SIZE; r++) {
+            for (int c = 0; c < SIZE; c++) {
+                if (initialGrid[r][c] != 0) {
+                    notes[r][c].clear();
+                }
+            }
+        }
     }
     
     @Override
@@ -168,5 +175,21 @@ public class SudokuEngine implements PuzzleEngine {
     
     public int[][] getUserGrid() {
         return userGrid;
+    }
+
+    public void setUserGrid(int[][] userGrid) {
+        this.userGrid = userGrid;
+    }
+
+    public int[][] getInitialGrid() {
+        return initialGrid;
+    }
+
+    public int[][] getSolvedGrid() {
+        return solvedGrid;
+    }
+    
+    public SudokuGrid getSudokuGrid() {
+        return sudokuGrid;
     }
 }

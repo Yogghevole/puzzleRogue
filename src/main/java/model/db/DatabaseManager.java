@@ -8,7 +8,8 @@ import java.sql.Statement;
 import java.util.Scanner;
 
 /**
- * Gestisce la connessione al database SQLite e l'inizializzazione dello schema.
+ * Singleton class managing SQLite database connection and initialization.
+ * Handles schema creation, data insertion, and migrations.
  */
 public class DatabaseManager {
 
@@ -28,6 +29,9 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Returns the singleton instance of DatabaseManager.
+     */
     public static synchronized DatabaseManager getInstance() {
         if (instance == null) {
             instance = new DatabaseManager();
@@ -35,19 +39,50 @@ public class DatabaseManager {
         return instance;
     }
 
+    /**
+     * Establishes a new connection to the SQLite database.
+     */
     public Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL);
     }
 
+    /**
+     * Initializes the database by executing create/insert scripts and applying migrations.
+     */
     public void initializeDatabase() {
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             executeSqlScript(conn, CREATE_SCRIPT);
             executeSqlScript(conn, INSERT_SCRIPT);
+            performSchemaMigrations(conn);
         } catch (SQLException e) {
             System.err.println("Fatal error during Database initialization: " + e.getMessage());
         }
     }
     
+    /**
+     * Applies schema changes (ALTER TABLE) to update existing databases.
+     * Swallows exceptions for columns that already exist.
+     */
+    private void performSchemaMigrations(Connection conn) {
+        try (Statement stmt = conn.createStatement()) {
+            try { stmt.execute("ALTER TABLE Run ADD COLUMN levels_completed INTEGER DEFAULT 0"); } catch (SQLException e) {}
+            try { stmt.execute("ALTER TABLE Run ADD COLUMN zero_error_levels INTEGER DEFAULT 0"); } catch (SQLException e) {}
+            try { stmt.execute("ALTER TABLE Run ADD COLUMN score_item_points INTEGER DEFAULT 0"); } catch (SQLException e) {}
+            try { stmt.execute("ALTER TABLE Run ADD COLUMN score INTEGER DEFAULT 0"); } catch (SQLException e) {}
+            
+            try { stmt.execute("ALTER TABLE Run_Level_State ADD COLUMN bonus_cells_data TEXT"); } catch (SQLException e) {}
+            try { stmt.execute("ALTER TABLE Run_Level_State ADD COLUMN background_id TEXT"); } catch (SQLException e) {}
+            
+            try { stmt.execute("ALTER TABLE Run ADD COLUMN used_enemies TEXT"); } catch (SQLException e) {}
+
+        } catch (SQLException e) {
+            System.err.println("Error performing schema migrations: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Reads and executes a SQL script from the classpath resources.
+     */
     private void executeSqlScript(Connection conn, String resourcePath) throws SQLException {
         try (InputStream is = getClass().getResourceAsStream(resourcePath);
              Statement stmt = conn.createStatement()) {

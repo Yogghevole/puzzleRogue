@@ -9,6 +9,10 @@ import model.domain.SudokuGrid;
 import org.junit.jupiter.api.Test;
 
 
+/**
+ * Unit tests for SudokuGenerator.
+ * Verifies that puzzles are generated with the correct difficulty and structure.
+ */
 public class SudokuGeneratorTest {
 
     static class FakeGameDataService extends GameDataService {

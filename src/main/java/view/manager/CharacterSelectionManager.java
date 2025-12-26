@@ -12,6 +12,10 @@ import java.util.List;
 import java.util.function.Consumer;
 import view.util.ModalUtils;
 
+/**
+ * Manages the character selection screen logic and UI construction.
+ * Displays available characters and handles user selection.
+ */
 public class CharacterSelectionManager {
 
     public static class Option {

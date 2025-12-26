@@ -3,6 +3,9 @@ package model.service;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests the persistence of character selection state within the SessionService.
+ */
 public class CharacterSelectionPersistenceTest {
     @Test
     void persistsAndReadsLastSelectedCharacter() {

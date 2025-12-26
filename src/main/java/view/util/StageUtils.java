@@ -4,6 +4,10 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+/**
+ * Utility class for managing JavaFX Stages (windows).
+ * Provides helper methods for enforcing fullscreen mode and setting scene roots.
+ */
 public final class StageUtils {
     private StageUtils() {}
 

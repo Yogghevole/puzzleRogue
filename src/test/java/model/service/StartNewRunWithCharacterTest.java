@@ -4,6 +4,10 @@ import model.db.DatabaseManager;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Verifies that a new run can be correctly initialized using a character selected
+ * and persisted in the session.
+ */
 public class StartNewRunWithCharacterTest {
     @Test
     void startNewRunUsesPersistedCharacter() {

@@ -10,6 +10,10 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.util.Duration;
 
+/**
+ * Utility class for displaying toast messages in the UI.
+ * Handles the creation and animation of temporary feedback messages overlaid on the interface.
+ */
 public final class ToastUtils {
     private ToastUtils() {}
 

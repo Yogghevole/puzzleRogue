@@ -14,6 +14,10 @@ import javafx.scene.Node;
 import model.service.RunService;
 import view.util.StageUtils;
 
+/**
+ * Controller for the character selection screen.
+ * Allows the player to choose a character class before starting a run.
+ */
 public class CharacterSelectionController {
     
     @FXML private HBox charactersContainer;
