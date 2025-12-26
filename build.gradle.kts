@@ -39,6 +39,7 @@ tasks.shadowJar {
     archiveBaseName.set("puzzleRogue")
     archiveClassifier.set("")
     archiveVersion.set("")
+    destinationDirectory.set(layout.projectDirectory)
     mergeServiceFiles()
 }
 
