@@ -50,7 +50,6 @@ class GameDataServiceTest {
 
     @Test
     void testIsBossLevel() {
-        boolean isBoss = gameDataService.isBossLevel(10);
         assertFalse(gameDataService.isBossLevel(1), "Level 1 should not be a boss level");
     }
     

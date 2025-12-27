@@ -11,17 +11,18 @@ repositories {
 
 javafx {
     modules("javafx.base", "javafx.controls", "javafx.graphics", "javafx.fxml")
-    version  = "17.0.10"
+    version  = "21.0.5"
 }
 dependencies {
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.9.8")
     implementation("org.xerial:sqlite-jdbc:3.45.2.0")
+    implementation("org.slf4j:slf4j-simple:2.0.9")
     val jUnitVersion = "5.10.2"
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jUnitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jUnitVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    val jfxVersion = "17.0.10"
+    val jfxVersion = "21.0.5"
     val platforms = listOf("win", "linux", "mac")
     val modules = listOf("base", "controls", "graphics", "fxml")
     
@@ -57,7 +58,7 @@ tasks.withType<Test> {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 

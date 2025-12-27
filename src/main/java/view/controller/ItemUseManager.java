@@ -288,24 +288,6 @@ public class ItemUseManager {
         }
     }
 
-    private void handleDeleteHintsItem(int slotIndex) {
-        if (inventorySlotsUIManager == null || noteGrids == null) {
-            return;
-        }
-        for (int r = 0; r < noteGrids.length; r++) {
-            for (int c = 0; c < noteGrids[r].length; c++) {
-                GridPane ng = noteGrids[r][c];
-                if (ng != null) ng.setVisible(false);
-            }
-        }
-        inventorySlotsUIManager.clearSlot(slotIndex);
-        inventorySlotsUIManager.flashSuccessOnSlot(slotIndex);
-        try { SoundManager.getInstance().playSettingsToggle(); } catch (Exception ignore) {}
-        if (sudokuToastShower != null) {
-            sudokuToastShower.accept("Hints cleared", Color.CORNFLOWERBLUE);
-        }
-    }
-
     private void playSacrificeRevealAnimation(Label lbl) {
         DropShadow goldGlow = new DropShadow();
         goldGlow.setRadius(18);

@@ -15,7 +15,6 @@ import javafx.scene.effect.BlendMode;
 import javafx.scene.paint.Color;
 import javafx.geometry.Pos;
 import javafx.geometry.Insets;
-import model.service.GameDataService;
 import model.service.RunService;
 import view.util.StageUtils;
 import javafx.animation.PauseTransition;
@@ -39,12 +38,10 @@ public class HomeScreenController {
     
     private final view.manager.UserInfoManager userInfoManager = new view.manager.UserInfoManager();
     
-    private GameDataService gameDataService;
     private RunService runService;
     
     @FXML
     public void initialize() {
-        gameDataService = new GameDataService();
         runService = new RunService();
         
         setupUI();

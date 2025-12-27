@@ -1,6 +1,5 @@
 package model.service;
 
-import model.dao.RunDAO;
 import model.dao.UserDAO;
 import model.db.DatabaseManager;
 import model.domain.Run;
@@ -19,7 +18,6 @@ class PersistenceSystemTest {
 
     private DatabaseManager dbManager;
     private UserDAO userDAO;
-    private RunDAO runDAO;
     private static final String TEST_USER_NICK = "persistence_tester";
 
     @BeforeEach
@@ -32,7 +30,6 @@ class PersistenceSystemTest {
         dbManager = DatabaseManager.getInstance();
         dbManager.initializeDatabase();
         userDAO = new UserDAO(dbManager);
-        runDAO = new RunDAO(dbManager);
         
         try (var conn = dbManager.getConnection();
              var stmt = conn.prepareStatement("DELETE FROM User WHERE nick = ?")) {

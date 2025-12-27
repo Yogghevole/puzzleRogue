@@ -37,24 +37,10 @@ public class SudokuGeneratorBonusTest {
         }
     }
 
-    private int countNonZero(int[][] grid) {
-        int count = 0;
-        for (int r = 0; r < 9; r++) {
-            for (int c = 0; c < 9; c++) {
-                if (grid[r][c] != 0) count++;
-            }
-        }
-        return count;
-    }
-
     @Test
     void testStartingCellsBuffLevel1() {
         MockGameDataService ds = new MockGameDataService();
         SudokuGenerator gen = new SudokuGenerator(ds);
-
-        RunFrozenBuffs frozenNone = new RunFrozenBuffs(Map.of());
-        SudokuGrid g0 = gen.generateNewPuzzle(1, frozenNone);
-        int baseCount = countNonZero(g0.getInitialGrid());
 
         RunFrozenBuffs frozenBuff1 = new RunFrozenBuffs(Map.of("STARTING_CELLS", 1));
         SudokuGrid g1 = gen.generateNewPuzzle(1, frozenBuff1);

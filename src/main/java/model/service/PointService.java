@@ -61,7 +61,7 @@ public class PointService {
 
         bd.add("Zero Error Levels (x" + zeroErrorLevelCount + ")", zeroErrorLevelCount * 30);
 
-        bd.add("Total Errors (x" + totalErrors + ")", totalErrors * -5);
+        bd.add("Total Errors (x" + totalErrors + ")", totalErrors * 5);
 
         bd.add("Inventory Items Remaining (x" + remainingItems + ")", remainingItems * 20);
 
