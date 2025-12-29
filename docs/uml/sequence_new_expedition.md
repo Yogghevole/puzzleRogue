@@ -1,13 +1,13 @@
-### Diagramma di Sequenza: New Expedition (Avvio e Setup)
+### Sequence Diagram: New Expedition (Start and Setup)
 
-Modella il flusso di creazione di una nuova Run, con selezione del personaggio, congelamento dei buff permanenti e generazione dei dati iniziali del livello 1.
+Models the new run creation flow, with character selection, permanent buff freezing, and level 1 initial data generation.
 
 ```mermaid
 sequenceDiagram
     participant UI as User Interface
     participant RunService as Run Service
     participant UserService as User Service
-    participant Generator as Game Generator
+    participant SudokuGenerator as Sudoku Generator
     participant GameDataService as Game Data Service
     participant DB as Database
 
@@ -22,20 +22,19 @@ sequenceDiagram
 
     Note over UserService: **Freeze Buff State** (B) for New Run
     
-    UI->>Generator: 5. determineDifficulty(Level 1, B)
-    Generator->>GameDataService: 6. retrieveBuffValue(B.STARTING_HINTS)
-    Note right of GameDataService: Consults PermanentBuff class logic
-    GameDataService-->>Generator: 7. return extraHintsValue
-    Generator->>UI: 8. return difficultyTier (D_tier)
+    UI->>SudokuGenerator: 5. determineDifficulty(Level 1, B)
+    SudokuGenerator->>GameDataService: 6. retrieveBuffValue(B.STARTING_HINTS)
+    GameDataService-->>SudokuGenerator: 7. return extraHintsValue
+    SudokuGenerator->>UI: 8. return difficultyTier (D_tier)
 
-    UI->>Generator: 9. generateInitialSudoku(D_tier)
-    Generator->>Generator: Select Random Enemy Sprite (E_id)
-    Generator-->>UI: 10. return SudokuState Initial, Enemy ID (E_id)
+    UI->>SudokuGenerator: 9. generateInitialSudoku(D_tier)
+    SudokuGenerator->>SudokuGenerator: Select Random Enemy Sprite
+    SudokuGenerator-->>UI: 10. return SudokuGrid, Enemy ID (E_id)
 
-    UI->>RunService: 11. createNewRun(userId, Character, B, D_tier, E_id, SudokuState)
+    UI->>RunService: 11. createNewRun(userId, Character, B, D_tier, E_id, SudokuGrid)
     
     RunService->>GameDataService: 12. calculateInitialStats(B)
-    Note right of GameDataService: Uses PermanentBuff classes to calculate Lives and Inventory Slots
+    Note right of GameDataService: Uses Buff classes to calculate Lives and Inventory Slots
     RunService->>RunService: - Initial Lives = Base + Buff Value
     RunService->>RunService: - Max Inventory Slots = Base + Buff Value
 
@@ -49,3 +48,4 @@ sequenceDiagram
     DB-->>UserService: 18. confirm update
     
     UI->>UI: Load Game State (R_new) and Start Level 1
+```

@@ -1,6 +1,6 @@
-### Diagramma di Sequenza: The Ancestor's Legacy (Acquisto Buff)
+### Sequence Diagram: The Ancestor's Legacy (Buff Purchase)
 
-Modella la logica di verifica dei punti, l'aggiornamento dei livelli di buff permanenti e la gestione dell'economia utente.
+Models point verification logic, permanent buff level updates, and user economy management.
 
 ```mermaid
 sequenceDiagram
@@ -12,8 +12,8 @@ sequenceDiagram
     UI->>UI: User Selects Buff (ID)
     UI->>UserService: 1. attemptUpgrade(userId, buffId)
 
-    UserService->>GameDataService: 2. getCost(buffId, nextLevel)
-    Note right of GameDataService: Consults PermanentBuff class for costPerLevel map
+    UserService->>GameDataService: 2. getBuffCost(buffId, nextLevel)
+    Note right of GameDataService: Consults Buff implementations
     GameDataService-->>UserService: 3. return requiredCost (C)
     
     UserService->>DB: 4. query User.pointsAvailable
@@ -22,7 +22,7 @@ sequenceDiagram
     alt P >= C (Points Sufficient)
         UserService->>DB: 6. update User: pointsAvailable = P - C
         UserService->>DB: 7. update User: permanentBuffLevels[buffId]++
-        UserService->>DB: 8. update User: pointsTotal = pointsTotal + C
+        UserService->>DB: 8. update User: pointsTotal = pointsTotal + C (if tracking spent)
 
         DB-->>UserService: 9. confirm updates
         UserService-->>UI: 10. upgradeSuccess(newLevel, newPoints)
@@ -32,3 +32,4 @@ sequenceDiagram
         UserService-->>UI: 11. upgradeFailed(reason: "Insufficient Points")
         UI->>UI: Display error message
     end
+```

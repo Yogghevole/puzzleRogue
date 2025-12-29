@@ -1,28 +1,28 @@
-### Diagramma di Sequenza: Ricompensa Fine Livello e Uso Oggetti
+### Sequence Diagram: Level Reward and Item Usage
 
-Modella la scelta della ricompensa di fine livello (gestione capacità inventario) e l'uso di un oggetto monouso in partita.
+Models level completion reward choice (inventory capacity management) and single-use item usage in game.
 
 ```mermaid
 sequenceDiagram
-    participant GameLogic as Game Logic
-    participant Generator as Game Generator
+    participant GameController as Game Controller
+    participant SudokuGenerator as Sudoku Generator
     participant RunService as Run Service
     participant DB as Database
     participant UI as User Interface
 
-    Note over GameLogic: Level Solved Triggered (from Level Interaction)
+    Note over GameController: Level Solved Triggered
     
-    GameLogic->>Generator: 1. generateRewardOptions(currentLevel)
-    Generator->>Generator: Select 2 Random Item Types
-    Generator-->>GameLogic: 2. return Options (ItemA, ItemB, Skip)
+    GameController->>SudokuGenerator: 1. generateRewardOptions(currentLevel)
+    SudokuGenerator->>SudokuGenerator: Select 2 Random Item Types
+    SudokuGenerator-->>GameController: 2. return Options (ItemA, ItemB, Skip)
 
-    GameLogic-->>UI: 3. displayRewardChoice(Options)
+    GameController-->>UI: 3. displayRewardChoice(Options)
     
     UI->>UI: User Selects ItemA/ItemB or Skip
     
     alt User Selects Item (ItemX)
         UI->>RunService: 4. attemptAddItem(runId, ItemX)
-        RunService->>DB: 5. query Run.frozenBuffs.CapacitaInventario
+        RunService->>DB: 5. query Run.frozenBuffs (Inventory Capacity)
         DB-->>RunService: 6. return maxSlots
         
         alt Inventory is NOT Full (currentItems < maxSlots)
@@ -39,23 +39,20 @@ sequenceDiagram
     end
 
     Note over UI: **Start Next Level Setup**
-    UI->>GameLogic: 11. startNewLevel(runId)
-    GameLogic->>GameLogic: Increment currentLevel
-    Note over GameLogic: Triggers logic from "New Expedition" (Generate Sudoku, Enemy)
-    
+    UI->>GameController: 11. startNewLevel(runId)
+    GameController->>GameController: Increment currentLevel
     
     loop Item Use During Level
-        UI->>UI: User Activates Consumable Item (ItemY)
+    UI->>UI: User Activates Consumable Item (ItemY)
         UI->>RunService: 12. useItem(runId, ItemY)
         
         RunService->>DB: 13. query Run.inventory
         DB-->>RunService: 14. return inventoryData
         
         alt ItemY is Available in Inventory
-            RunService->>RunService: 15. Execute ItemY Effect:
-            Note over RunService: e.g., Restore 1 Life, Gain Points, Reveal Grid Cell
+            RunService->>RunService: 15. Execute ItemY Effect
             
-            RunService->>DB: 16. update Run: (Lives/Points/SudokuState)
+            RunService->>DB: 16. update Run: (Lives/Points/RunLevelState)
             RunService->>DB: 17. update Run.inventory: remove ItemY
             DB-->>RunService: 18. confirm updates
             RunService-->>UI: 19. itemEffectApplied(ItemY)
@@ -63,3 +60,4 @@ sequenceDiagram
             RunService-->>UI: 20. itemUseFailed()
         end
     end
+```

@@ -175,6 +175,9 @@ public class GameInputManager {
             mainGameArea.setFocusTraversable(true);
             mainGameArea.requestFocus();
             scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+                if (e.getTarget() instanceof javafx.scene.control.TextInputControl) {
+                    return;
+                }
                 int value = mapKeyToDigit(e.getCode());
                 if (value >= 1 && value <= 9) {
                     onNumberInput.accept(value);

@@ -1,6 +1,6 @@
-### Diagramma di Sequenza: Login e Caricamento Partita
+### Sequence Diagram: Login and Game Loading
 
-Modella l'accesso dell'utente, la creazione di un nuovo utente e la verifica della Run in corso (`currentRunId`).
+Models user access, new user creation, and current run verification (`currentRunId`).
 
 ```mermaid
 sequenceDiagram
@@ -20,7 +20,7 @@ sequenceDiagram
         
         alt currentRunId is NOT NULL
             UI->>UserService: 5. loadCurrentRun(runId)
-            UserService->>DB: 6. query Run, SudokuState, Items
+            UserService->>DB: 6. query Run, RunLevelState, Inventory
             DB-->>UserService: 7. return Run Data
             UserService-->>UI: 8. loadSuccess(Run Data)
             UI->>UI: Display Main Menu (Venture Forth ENABLED)
@@ -35,3 +35,4 @@ sequenceDiagram
         UserService-->>UI: 11. NewUserCreated(object)
         UI->>UI: Display Main Menu (Venture Forth DISABLED)
     end
+```

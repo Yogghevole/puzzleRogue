@@ -1,6 +1,6 @@
-### Diagramma delle Classi
+### Class Diagram
 
-Questo diagramma definisce la struttura dei dati persistenti (`User`, `Run`) e le loro relazioni.
+This diagram defines the persistent data structure (`User`, `Run`) and their relationships with the domain model.
 
 ```mermaid
 classDiagram
@@ -9,7 +9,7 @@ classDiagram
     class User{
         <<Entity>>
         +String nick (PK)
-        +int currentRunId (FK, NULLable)
+        +Integer currentRunId (FK, NULLable)
         ---
         +int pointsAvailable
         +int pointsTotal
@@ -21,58 +21,57 @@ classDiagram
 
     class Run{
         <<Entity>>
-        +int runId (PK)
-        +int userId (FK)
+        +Integer runId (PK)
+        +String userNick (FK)
         ---
-        +int currentLevel (1..10)
+        +int levelsCompleted
         +int livesRemaining
-        +String characterSelected
-        +String enemySpriteId
+        +String characterId
         +Map<String, int> frozenBuffs
-        +List<Item> inventory
+        +Map<String, int> inventory
         +int totalErrors
+        +int score
+        +int zeroErrorLevels
+        +int scoreItemPoints
     }
 
-    class SudokuState{
+    class RunLevelState{
         <<Value Object>>
-        -String initialGrid
-        -String userGrid
-        -String notesData
-        -int errorsInCurrentLevel
-        -bool protectionUsed
-        -String difficultyTier
+        +Integer runId
+        +int currentLevel
+        +String enemySpriteId
+        +String difficultyTier
+        +String initialGridData
+        +String solvedGridData
+        +String userGridData
+        +String notesData
+        +int errorsInLevel
+        +boolean protectionUsed
+        +String bonusCellsData
     }
 
-    class Item{
-        <<Value Object>>
-        +String typeId // e.g., "LIFE_BOOST_ITEM"
-        +int quantity
-    }
-
-    class AbstractGameEffect{
+    class Buff{
         <<Abstract>>
-        +String id (PK)
-        +String name
-        +apply(Run run, User user, int level)
+        +BuffType type
+        +String getId()
+        +String getDisplayName()
+        +String getDescription()
+        +int getCost(int level)
+        +int getMaxLevel()
     }
     
-    class PermanentBuff extends AbstractGameEffect{
-        <<Abstract>>
-        +int maxLevel
-        +Map<int, int> costPerLevel
-    }
-
-    class ConsumableItem extends AbstractGameEffect{
-        <<Abstract>>
-        +useEffect(Run run, User user)
+    class PermanentBuff extends Buff{
+        <<Concrete Implementations>>
+        +ExtraLivesBuff
+        +InventoryCapacityBuff
+        +PointBonusBuff
+        +StartingCellsBuff
+        +FirstErrorProtectBuff
     }
 
     User "1" o-- "0..1" Run : has current
-    Run "1" *-- "1" SudokuState : contains
-    Run "1" *-- "0..N" Item : has in
-    
-    AbstractGameEffect <|-- PermanentBuff : inherits from
-    AbstractGameEffect <|-- ConsumableItem : inherits from
+    Run "1" *-- "1" RunLevelState : contains current level
+    Run "1" *-- "0..N" Buff : has frozen levels
     
     User : permanentBuffLevels = Map<BuffId, Level>
-    Run : frozenBuffs = Map<BuffId, Level>
+```

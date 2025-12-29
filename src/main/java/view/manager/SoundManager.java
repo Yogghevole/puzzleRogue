@@ -1,5 +1,6 @@
 package view.manager;
 
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -67,7 +68,9 @@ public class SoundManager {
             if (url != null) {
                 Clip clip = AudioSystem.getClip();
                 try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
-                    clip.open(ais);
+                    AudioInputStream playbackStream = createPCMStream(ais);
+                    clip.open(playbackStream);
+                    if (playbackStream != ais) playbackStream.close();
                 }
                 clipGains.put(clip, gainMultiplier);
                 applyVolume(clip, sfxVolume);
@@ -164,7 +167,9 @@ public class SoundManager {
             if (url != null) {
                 musicClip = AudioSystem.getClip();
                 try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
-                    musicClip.open(ais);
+                    AudioInputStream playbackStream = createPCMStream(ais);
+                    musicClip.open(playbackStream);
+                    if (playbackStream != ais) playbackStream.close();
                 }
                 applyVolume(musicClip, musicVolume);
                 musicClip.loop(Clip.LOOP_CONTINUOUSLY);
@@ -248,5 +253,25 @@ public class SoundManager {
             }
         } catch (IllegalArgumentException e) {
         } catch (Exception ignore) {}
+    }
+
+    private AudioInputStream createPCMStream(AudioInputStream sourceStream) {
+        AudioFormat sourceFormat = sourceStream.getFormat();
+        if (sourceFormat.getEncoding() == AudioFormat.Encoding.PCM_SIGNED && 
+            sourceFormat.getSampleSizeInBits() == 16) {
+            return sourceStream;
+        }
+        
+        AudioFormat targetFormat = new AudioFormat(
+            AudioFormat.Encoding.PCM_SIGNED,
+            sourceFormat.getSampleRate(),
+            16,
+            sourceFormat.getChannels(),
+            sourceFormat.getChannels() * 2,
+            sourceFormat.getSampleRate(),
+            false
+        );
+        
+        return AudioSystem.getAudioInputStream(targetFormat, sourceStream);
     }
 }
